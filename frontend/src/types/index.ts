@@ -239,3 +239,30 @@ export interface AdminStats {
   total_items: number;
   total_events: number;
 }
+
+export interface CandidateDate {
+  raw_date: string;
+  normalized_date: string;
+  label: 'EXPIRY' | 'MFG' | 'UNLABELED' | 'USER_PROVIDED';
+  is_expiry_label: boolean;
+  is_mfg_label: boolean;
+  is_in_past: boolean;
+}
+
+export interface OcrResponse {
+  extracted_text: string;
+  candidate_date: string | null;
+  normalized_date: string | null;
+  is_expired: boolean | null;
+  is_ambiguous: boolean;
+  ambiguity_reason: string | null;
+  ocr_available: boolean;
+  verification_status: 'unverified' | 'confirmed' | 'user_provided' | 'ambiguous';
+  confidence_score: number | null;
+  engine_mode: 'real_ocr' | 'ocr_unavailable' | 'user_provided' | 'demo_ocr';
+  labels_detected: string[];
+  candidate_dates: CandidateDate[];
+  manufacturing_date_detected?: string | null;
+  user_confirmed: boolean;
+  disclaimer: string;
+}
