@@ -18,6 +18,18 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
 
+    # Image upload and retention configuration (Section 8)
+    MAX_UPLOAD_SIZE_BYTES: int = 5 * 1024 * 1024  # 5 MB
+    RETAIN_UPLOADED_IMAGES: bool = False  # Set to True only if persistent image archiving is desired
+    UPLOAD_DIR: str = "./uploads"
+
+    # AI Model Adapter configuration (Section 4B)
+    MODEL_MODE: str = "demo"  # "demo" or "real"
+    MODEL_PATH: str = "./models/waste_classifier.onnx"
+
+    # Development Admin Authentication (Section 4J)
+    ADMIN_SECRET_KEY: str = "pharmacycle-dev-admin-key-2026"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:

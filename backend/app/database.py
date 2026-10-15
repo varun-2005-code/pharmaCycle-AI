@@ -47,3 +47,11 @@ def init_db():
     logger.info("Initializing database schema...")
     Base.metadata.create_all(bind=engine)
     logger.info("Database schema initialized successfully.")
+
+    # Seed baseline disposal rules and demo facilities
+    from app.services.seed_data import seed_rules_and_facilities
+    db = SessionLocal()
+    try:
+        seed_rules_and_facilities(db)
+    finally:
+        db.close()

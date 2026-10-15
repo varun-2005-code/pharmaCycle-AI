@@ -1,6 +1,6 @@
 """Tests for SQLAlchemy database models as specified in Section 5."""
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 
 from app.models.waste_item import WasteItem
@@ -70,7 +70,7 @@ def test_create_disposal_rule(db_session):
         source_title="National Guidelines on Pharmaceutical Disposal",
         source_url="https://example.gov/pharmaceutical-disposal",
         verification_status="verified",
-        last_verified_at=datetime.utcnow()
+        last_verified_at=datetime.now(timezone.utc)
     )
     db_session.add(rule)
     db_session.commit()
@@ -96,7 +96,7 @@ def test_create_collection_facility(db_session):
         accepted_categories='["Medicine or tablet strip", "Empty blister pack"]',
         source_url="https://example.org/facilities/104",
         verification_status="verified",
-        last_verified_at=datetime.utcnow()
+        last_verified_at=datetime.now(timezone.utc)
     )
     db_session.add(facility)
     db_session.commit()

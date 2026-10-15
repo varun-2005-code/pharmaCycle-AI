@@ -8,6 +8,14 @@ from app.config import settings
 from app.database import init_db
 from app.logging_config import setup_logging
 from app.api.health import router as health_router
+from app.api.analyze import router as analyze_router
+from app.api.ocr import router as ocr_router
+from app.api.disposal import router as disposal_router
+from app.api.facilities import router as facilities_router
+from app.api.waste_items import router as waste_items_router
+from app.api.dashboard import router as dashboard_router
+from app.api.assistant import router as assistant_router
+from app.api.admin import router as admin_router
 
 # Initialize structured logging
 setup_logging()
@@ -46,6 +54,14 @@ app.add_middleware(
 
 # Register API routers
 app.include_router(health_router, prefix="/api")
+app.include_router(analyze_router, prefix="/api")
+app.include_router(ocr_router, prefix="/api")
+app.include_router(disposal_router, prefix="/api")
+app.include_router(facilities_router, prefix="/api")
+app.include_router(waste_items_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
+app.include_router(assistant_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])
