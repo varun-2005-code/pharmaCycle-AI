@@ -2,7 +2,7 @@
 
 > **"Identify Smart. Dispose Safe. Recover Responsibly."**
 
-PharmaCycle AI is an environmental-health technology web application designed to help households, pharmacies, and waste handlers properly identify pharmaceutical waste, separate medicines from composite packaging (such as PVC/Alu blister foils), discover authorized collection facilities, and track waste items through a verified Digital Twin state machine.
+PharmaCycle AI is an environmental-health technology web application built to help households, pharmacies, and waste handlers safely identify pharmaceutical waste, separate medicines from complex packaging (such as PVC/Aluminium blister foils), understand safe disposal options, locate authorized collection points, and track waste items through an immutable Digital Twin state machine.
 
 ---
 
@@ -22,14 +22,14 @@ PharmaCycle AI Workspace/
 │   │   │   ├── dashboard.py         # GET /api/dashboard/summary, /api/dashboard/analytics
 │   │   │   ├── assistant.py         # POST /api/assistant/chat (Grounded Q&A)
 │   │   │   └── admin.py             # Admin stats, rule editor, manual event logger
-│   │   ├── models/                  # SQLAlchemy Models (Section 5)
+│   │   ├── models/                  # SQLAlchemy Models
 │   │   │   ├── waste_item.py        # WasteItem model & DB check constraints
 │   │   │   ├── disposal_rule.py     # DisposalRule model & verification status
 │   │   │   ├── collection_facility.py # CollectionFacility locator model
 │   │   │   └── waste_event.py       # WasteEvent immutable audit trail
 │   │   ├── schemas/                 # Pydantic v2 schemas
 │   │   ├── services/
-│   │   │   ├── image_validator.py   # Magic-byte file validation (JPEG/PNG/WEBP, 5MB limit)
+│   │   │   ├── image_validator.py   # Magic-byte file validation (JPEG/PNG/WEBP, 10MB limit)
 │   │   │   ├── classifier.py        # Pluggable ClassifierAdapter (Demo & RealModel)
 │   │   │   ├── ocr.py               # Expiry-Date OCR & date normalizer
 │   │   │   ├── rules_engine.py      # Deterministic disposal recommendation engine
@@ -40,32 +40,32 @@ PharmaCycle AI Workspace/
 │   │   ├── logging_config.py        # Privacy-preserving logging
 │   │   ├── state_machine.py         # 5-stage waste lifecycle state machine
 │   │   └── main.py                  # FastAPI entrypoint & lifespan
-│   ├── tests/                       # Automated pytest suite (47 tests)
-│   │   ├── test_health.py
-│   │   ├── test_models.py
-│   │   ├── test_state_machine.py
-│   │   ├── test_analyze.py
-│   │   ├── test_ocr.py
-│   │   ├── test_disposal.py
-│   │   ├── test_facilities.py
-│   │   ├── test_waste_items_and_dashboard.py
-│   │   └── test_assistant_and_admin.py
+│   ├── tests/                       # Automated pytest suite (82 tests)
 │   ├── requirements.txt             # Python dependencies
-│   └── pytest.ini
+│   ├── pytest.ini
+│   └── .env.example
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── Navbar.tsx           # Navigation with live health indicator pill
+│   │   │   ├── AssistantChat.tsx    # Shared chat component with voice, TTS, sources & actions
+│   │   │   ├── ChatDrawer.tsx       # Slide-out drawer with focus trap & Esc key
+│   │   │   ├── FloatingChatLauncher.tsx # Global floating launcher button
+│   │   │   ├── Navbar.tsx           # Navigation with live health indicator pill & Assistant link
 │   │   │   ├── Footer.tsx           # Botanical green footer with legal & safety disclaimers
-│   │   │   ├── Layout.tsx           # Global page layout container
+│   │   │   ├── Layout.tsx           # Global page layout container & AssistantProvider
 │   │   │   └── StatusBadge.tsx      # 5-status lifecycle badge with icons
+│   │   ├── context/
+│   │   │   └── AssistantContext.tsx # Global assistant context & analysis metadata passing
+│   │   ├── hooks/
+│   │   │   ├── useSpeechRecognition.ts # Web Speech API recognition hook
+│   │   │   └── useSpeechSynthesis.ts   # Web Speech Synthesis TTS hook
 │   │   ├── pages/
-│   │   │   ├── HomePage.tsx         # Section 4A Landing Page
+│   │   │   ├── HomePage.tsx         # Section 4A Landing Page with "Ask the Assistant" CTA
 │   │   │   ├── IdentifyPage.tsx     # Section 4B AI Waste Identification
 │   │   │   ├── OcrPage.tsx          # Section 4C Expiry-Date OCR & Verification
 │   │   │   ├── RecommendationsPage.tsx # Section 4D Rules Recommendation Engine
-│   │   │   ├── AssistantPage.tsx    # Section 4E Grounded AI Disposal Assistant
+│   │   │   ├── AssistantPage.tsx    # Section 4E Full-page Grounded AI Disposal Assistant
 │   │   │   ├── FacilitiesPage.tsx   # Section 4F Collection Centre Locator
 │   │   │   ├── DashboardPage.tsx    # Section 4G Digital Twin Tracking & Recharts
 │   │   │   ├── GuidePage.tsx        # Section 4H Searchable Material Disposal Guide
@@ -76,308 +76,292 @@ PharmaCycle AI Workspace/
 │   │   │   ├── DocsPage.tsx         # API specs & architecture documentation
 │   │   │   ├── ContactPage.tsx      # Municipal outreach & support directory
 │   │   │   └── NotFoundPage.tsx     # 404 handler
+│   │   ├── tests/
+│   │   │   ├── AssistantChat.test.tsx  # Vitest chat UI & resilience tests (5 tests)
+│   │   │   ├── AssistantVoice.test.tsx # Vitest voice & TTS tests (8 tests)
+│   │   │   └── setup.ts             # JSDOM test setup & polyfills
 │   │   ├── types/index.ts           # Comprehensive TypeScript interfaces
-│   │   ├── App.tsx                  # React Router v7 routes
-│   │   └── index.css                # Botanical green (#0F3E2E) & teal (#14B8A6) tokens
+│   │   ├── App.tsx                  # React Router routes
+│   │   └── index.css                # Botanical green (#0F3E2E) & teal (#14B8A6) design system
 │   ├── package.json
-│   └── vite.config.ts
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── vite.config.ts
+│   └── .env.example
 │
+├── docs/
+│   └── AUDIT.md                     # Complete project audit against PROJECT_SPEC.md & ASSISTANT_SPEC.md
 ├── PROJECT_SPEC.md                  # Project Specification (Source of Truth)
 └── README.md                        # Master Documentation
 ```
 
 ---
 
-## 2. Waste Status State Machine
+## 2. Implemented Features Summary
 
-The platform implements a strict 5-stage waste lifecycle state machine:
-
-```
-[ identified ]
-      │
-      ▼
-[ awaiting_confirmation ]
-      │
-      ▼
-[ collection_pending ]
-      │
-      ▼
-[ collected ]
-      │
-      ▼
-[ processed ]  <-- Strictly requires an associated WasteEvent audit record!
-```
-
-- **Transitions:** `identified` → `awaiting_confirmation` → `collection_pending` → `collected` → `processed`.
-- **Validation:** Disallowed transitions (e.g. backward leaps or skipping states) raise `InvalidStateTransitionError` with HTTP 400.
-- **Processed Status Requirement:** Per specification section 3, 5, and 9: An item cannot reach `processed` unless an associated `WasteEvent` is created with an identified actor and evidence reference.
-
----
-
-## 3. Implemented Features Summary
-
-| Feature | Spec Section | Implementation |
+| Feature | Spec Reference | Implementation Highlights |
 |---|---|---|
-| **AI Waste Identification** | Section 4B & 6 | Magic-byte file validation (JPEG/PNG/WEBP, 5MB limit). Pluggable `ClassifierAdapter` (`DemoClassifier` & `RealModelClassifier`). Drag-and-drop, camera capture, preview, demo selector, and uncertainty limitations. |
-| **Expiry-Date OCR** | Section 4C & 6 | Regex date parsing for `MM/YYYY`, `MM/YY`, `DD/MM/YYYY`. Distinguishes `MFG/BATCH` from `EXP`. User confirmation checkbox and manual date override fallback. |
-| **Disposal Recommendations** | Section 4D & 6 | Deterministic rules engine decoupled from LLMs. Evaluates category, material, confirmed expiry status, and location. Mandates pharmacy take-backs for tablets and specialized delamination for blister foils. |
-| **Grounded AI Assistant** | Section 4E & 6 | Chat assistant with verifiable source citations (WHO, FDA, EPA, WRAP). Clinical safety guardrail refusing medical diagnosis or consumption advice. Operational without external API keys. |
-| **Collection Centre Locator**| Section 4F & 6 | Search by city or PIN code. Filter by accepted categories and verified status. Direct Google Maps navigation link for verified locations. |
-| **Digital Twin Dashboard**   | Section 4G & 6 | Real-time KPI counts, Recharts visualizations (Category Distribution donut, Waste-Flow Activity timeline), 5-step process-flow cards, and quantity distinction (User-Reported vs Collected vs Verified Processed). Load Demo & Reset Demo buttons. |
-| **Material Disposal Guide**  | Section 4H & 6 | Searchable articles with material breakdowns, appropriate disposal routes, what NOT to do (red warnings), and municipal rule dependencies (amber alerts). |
-| **Development Admin Console**| Section 4J & 6 | Protected development console (`X-Admin-Key`) to manage collection facilities, add disposal rules, and log verified batch recovery events. |
+| **AI Waste Identification** | Section 4B | Magic-byte validation (`JPEG`, `PNG`, `WEBP`, 10MB limit). Pluggable `ClassifierAdapter` (`DemoClassifier` & `RealModelClassifier`). Drag-and-drop, camera capture, preview, replace/remove controls. Categorizes into 5 packaging classes. |
+| **Expiry-Date OCR** | Section 4C | Text extraction using OCR with regex candidate parsing for `MM/YYYY`, `MM/YY`, `DD/MM/YYYY`. Distinguishes `MFG/BATCH` from `EXP`. User confirmation step and manual override fallback. Shows `"Expiry not verified"` unless confirmed. |
+| **Disposal Recommendations** | Section 4D | Deterministic backend rules engine decoupled from LLMs. Evaluates category, material, confirmed expiry status, and location. Mandates pharmacy take-backs for tablets and specialized delamination for blister foils. Never recommends flushing medicines. |
+| **Grounded AI Assistant** | Section 4E | Dual mode: Rules-backed FAQ (`rules_grounded`) and LLM-grounded (`llm_grounded`). Mode badge displayed in UI. Verified source chips (link only verified URLs). Suggested-action buttons (never auto-navigates). Capped 6-turn history. Emergency refusal for poison/overdose directing to 112. |
+| **Assistant Chat UI Modes** | ASSISTANT_SPEC §2 | Global floating launcher on all pages, slide-out chat drawer with focus trap and `Escape` key handler, and full-page `/assistant` route. Context passing from Identify/OCR pages without sending raw image data. |
+| **Voice Input & Text-to-Speech** | ASSISTANT_SPEC §3 | Browser Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`). Language selector (`en-IN` default, `hi-IN`, `kn-IN`). Visible note that answers are in English. One-time privacy notice on first use. Live interim results in input box with editable final transcript. Text-to-speech (`speechSynthesis`) with Read Aloud buttons, global Voice Replies toggle (OFF by default), and Stop button. Filters out URLs. |
+| **Collection Centre Locator** | Section 4F | Search by city or PIN code. Filter by accepted categories and verified status. Direct directions links only for verified addresses. Example facilities explicitly labelled `[EXAMPLE – not a real facility]`. Assistant never invents unverified facilities. |
+| **Digital Twin Dashboard** | Section 4G | Real-time KPI counts, Recharts visualizations (Category Distribution donut, Waste-Flow Activity timeline), 5-step process-flow pipeline cards. Distinguishes User-Reported vs Collected vs Verified Processed quantities. Seed Demo & Reset Demo buttons. Item event history modal. |
+| **Waste Lifecycle State Machine** | Section 5 & 9 | Strict 5-stage forward state machine: `identified` → `awaiting_confirmation` → `collection_pending` → `collected` → `processed`. Transitioning to `processed` strictly requires an associated `WasteEvent` audit record with verified actor and evidence reference. |
+| **Material Disposal Guide** | Section 4H | Searchable articles with material breakdowns, appropriate disposal routes, what NOT to do warnings, and municipal rule dependencies. |
+| **Development Admin Console** | Section 4J | Protected development console (`X-Admin-Key` header / query param) to manage collection facilities, add disposal rules, and log verified batch recovery events. |
 
 ---
 
-## 4. Quickstart & Execution Commands
+## 3. Quickstart & Execution Commands (Windows PowerShell)
 
 ### Prerequisites
-- Python 3.10+ (tested with Python 3.14)
-- Node.js 18+ (tested with Node v24)
-- Modern web browser (Chrome, Edge, Firefox)
+- **Python 3.10+** (Tested on Python 3.14 on Windows)
+- **Node.js 18+** (Tested on Node.js v24 on Windows)
+- **Supported Browser:** Google Chrome or Microsoft Edge (recommended for Web Speech API SpeechRecognition & SpeechSynthesis support)
 
 ---
 
-### Backend Setup & Launch
+### Step 1: Backend Setup & Launch
 
-1. Navigate to the backend directory:
-   ```powershell
-   cd backend
-   ```
+Open a Windows PowerShell terminal:
 
-2. Activate virtual environment:
-   - **Windows:**
-     ```powershell
-     .\venv\Scripts\Activate.ps1
-     ```
-   - **Linux / macOS:**
-     ```bash
-     source venv/bin/activate
-     ```
+```powershell
+# Navigate to the backend directory
+cd c:\Users\Lenovo\OneDrive\Documents\Desktop\PROJECT_SPEC.md\backend
 
-3. Run the automated test suite:
-   ```powershell
-   pytest -v
-   ```
-   *All 78 tests pass across 9 test modules covering classifiers, OCR date parsing, disposal rules, facilities locator, dashboard analytics, state transitions, grounded assistant, and admin console.*
+# Create virtual environment (if not already created)
+python -m venv venv
 
-4. Launch the FastAPI server:
-   ```powershell
-   python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-   ```
-   - **API Docs (Swagger UI):** http://127.0.0.1:8000/docs
-   - **Health Check:** http://127.0.0.1:8000/api/health
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the FastAPI server via Uvicorn
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+- **API Documentation (Swagger UI):** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+- **Health Probe:** [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
 
 ---
 
-### Frontend Setup & Launch
+### Step 2: Frontend Setup & Launch
 
-1. In a separate terminal, navigate to the frontend directory:
-   ```powershell
-   cd frontend
-   ```
+Open a second Windows PowerShell terminal:
 
-2. Start the Vite development server:
-   ```powershell
-   npm run dev
-   ```
-   - **Application URL:** http://127.0.0.1:5173/
+```powershell
+# Navigate to the frontend directory
+cd c:\Users\Lenovo\OneDrive\Documents\Desktop\PROJECT_SPEC.md\frontend
 
-3. Run production typecheck & build:
-   ```powershell
-   npm run build
-   ```
-   *Runs `tsc -b && vite build` verifying zero TypeScript or packaging errors.*
+# Install dependencies
+npm install
 
----
+# Start the Vite development server
+npm run dev
+```
 
-## 5. Configuration & Environment Variables
-
-All configuration is driven by standard environment variables (configured via `.env` files in `backend/` and `frontend/`).
-
-### Backend Environment Variables (`backend/.env`)
-
-| Variable | Default Value | Description |
-|---|---|---|
-| `PROJECT_NAME` | `"PharmaCycle AI - Smart Pharmaceutical Waste Assistant"` | System name displayed in API responses. |
-| `ENVIRONMENT` | `development` | Operating environment (`development`, `staging`, `production`). |
-| `LOG_LEVEL` | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
-| `DATABASE_URL` | `sqlite:///./pharmacycle.db` | SQLAlchemy connection string. Defaults to local SQLite database with foreign-key PRAGMA enforcement. |
-| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Allowed CORS origins for the frontend single-page application. |
-| `HOST` | `127.0.0.1` | Host address for uvicorn server binding. |
-| `PORT` | `8000` | Port for FastAPI server. |
-| `MAX_UPLOAD_SIZE_BYTES`| `5242880` (5MB) | Maximum permitted packaging image upload size. Enforced via stream length inspection. |
-| `RETAIN_UPLOADED_IMAGES`| `false` | Image retention flag. When `false` (default), uploaded files are held only in memory during inference and never saved to disk. |
-| `UPLOAD_DIR` | `./uploads` | Destination directory if image archiving is explicitly enabled. |
-| `MODEL_MODE` | `demo` | Packaging classification engine mode: `demo` (deterministic simulation) or `real` (loads ONNX model). |
-| `MODEL_PATH` | `./models/waste_classifier.onnx` | Filesystem path to trained ONNX model weights when `MODEL_MODE=real`. |
-| `ADMIN_SECRET_KEY` | `pharmacycle-dev-admin-key-2026` | Dev secret key protecting the administrative management console (`X-Admin-Key` header). |
-| `GEMINI_API_KEY` | `None` (Optional) | Google Gemini API key for `llm_grounded` assistant mode. If absent, operates in deterministic rules-grounded mode. |
-| `OPENAI_API_KEY` | `None` (Optional) | OpenAI API key fallback for `llm_grounded` assistant mode. |
-
-### Frontend Environment Variables (`frontend/.env`)
-
-| Variable | Default Value | Description |
-|---|---|---|
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Target URL for backend REST API. Proxied via `vite.config.ts` in local development. |
+- **Frontend Web Application:** [http://localhost:5173/](http://localhost:5173/)
+- **Full-Page Assistant Route:** [http://localhost:5173/assistant](http://localhost:5173/assistant)
+- **Digital Twin Dashboard:** [http://localhost:5173/dashboard](http://localhost:5173/dashboard)
 
 ---
 
-## 6. Demo Mode Transparency & Data Integrity
+## 4. Configuration & Environment Variables
 
-PharmaCycle AI strictly adheres to the principle that **no demonstration data is ever misrepresented as real**:
+All configuration is driven by standard environment variables. Files `.env.example` are provided with safe placeholder values only (no secrets committed).
+
+### Backend Configuration (`backend/.env`)
+
+```ini
+# System Name & Environment
+PROJECT_NAME="PharmaCycle AI - Smart Pharmaceutical Waste Assistant"
+ENVIRONMENT=development
+LOG_LEVEL=INFO
+
+# Database Connection (SQLite default with foreign-key PRAGMA enforcement)
+DATABASE_URL=sqlite:///./pharmacycle.db
+
+# CORS Allowed Origins
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+# Server Binding
+HOST=127.0.0.1
+PORT=8000
+
+# File Upload & Image Retention Policy (Section 8)
+# Maximum permitted upload size: 5MB (5242880 bytes) up to 10MB
+MAX_UPLOAD_SIZE_BYTES=5242880
+# When false (default), images are processed in-memory and NEVER saved to disk
+RETAIN_UPLOADED_IMAGES=false
+UPLOAD_DIR=./uploads
+
+# AI Classification Mode (Section 4B)
+# "demo" (deterministic simulation, confidence=null) or "real" (loads ONNX model from MODEL_PATH)
+MODEL_MODE=demo
+MODEL_PATH=./models/waste_classifier.onnx
+
+# Development Admin Secret Key (Section 4J)
+ADMIN_SECRET_KEY=pharmacycle-dev-admin-key-2026
+
+# Grounded AI Assistant (Section 4E) - Optional External LLM Keys
+# If either key is set, the assistant operates in "llm_grounded" mode.
+# If omitted, the assistant operates deterministically in zero-dependency "rules_grounded" mode.
+# GEMINI_API_KEY=your_gemini_api_key_here
+# OPENAI_API_KEY=your_openai_api_key_here
+```
+
+### Frontend Configuration (`frontend/.env`)
+
+```ini
+# Backend API Base URL (proxied via vite.config.ts in local development)
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+---
+
+## 5. Demo Mode vs Real Model & Honesty Rules
+
+PharmaCycle AI strictly enforces transparency principles: **no simulated demo data is ever misrepresented as real computer vision or real facilities**.
 
 1. **AI Vision Classification (`MODEL_MODE=demo`):**
    - The classifier returns `model_mode: "demo"` and `confidence: null`.
-   - The frontend renders `"Not applicable (Demo Simulation)"` rather than inventing a false numerical confidence percentage (e.g. 98.4%).
-   - When a trained model is loaded in `MODEL_MODE=real`, authentic softmax probabilities are calculated and returned.
+   - The frontend displays `"Not applicable (Demo Simulation)"` rather than inventing a false numerical confidence score (e.g., 97.4%).
+   - In `MODEL_MODE=real`, authentic softmax probabilities are calculated and returned.
 2. **Expiry-Date OCR:**
-   - Does not fabricate OCR dates. If EasyOCR is uninstalled or an image has unreadable printing, the API transparently returns `ocr_status: "unavailable"` or `is_ambiguous: true`.
-   - Expiry dates are marked `"unverified"` until the user reviews and confirms them. Dates entered manually by the user are explicitly flagged as `"user-provided"`.
+   - Expiry dates are marked `"Expiry not verified"` until the user reviews and confirms them. Dates entered manually by the user are explicitly flagged as `"user-provided"`.
+   - Protects detected manufacturing dates (`MFG`/`MFD`) from false expiration interpretation.
 3. **Example Facilities:**
-   - All seeded demo facilities are prominently titled with `EXAMPLE – not a real facility` (e.g., *"EXAMPLE – not a real facility: Bandra Green Take-Back Center"*).
-   - Each card displays a prominent warning badge: `"Acceptance not verified"`. They are never suggested as confirmed final destinations.
+   - All seeded demo facilities are prominently titled with `[EXAMPLE – not a real facility]` (e.g. *"GreenCross Eco Pharmacy [EXAMPLE – not a real facility]"*).
+   - Unverified facilities display `"Acceptance not verified"` and are excluded from confirmed blister recommendations.
 4. **Verifiable Citations Only:**
-   - Every recommendation references published public guidance from the World Health Organization (WHO), US FDA, US EPA, or UK WRAP. No regulations or citation URLs are fabricated.
-5. **Quantity Separation:**
-   - On the Digital Twin dashboard, user-estimated quantities are reported strictly as *Estimated / User-Reported*. Only items backed by an immutable `WasteEvent` are displayed as *Recorded Collection* or *Verified Processed*. Detections are never counted as recycled material.
+   - Recommendations reference published public guidance from WHO, US FDA, US EPA, or UK WRAP. No regulations or citation URLs are fabricated.
+5. **Dashboard Quantity Separation:**
+   - The Digital Twin dashboard strictly distinguishes *Estimated / User-Reported* from *Recorded Collection* and *Verified Processed*. Detected items are never counted as recycled material without an event record.
+6. **State Machine Processing Proof:**
+   - Transitioning an item to `processed` status strictly requires an associated `WasteEvent` audit record with an identified actor and evidence reference.
 
 ---
 
-## 7. Backend REST API Reference
+## 6. Grounded AI Disposal Assistant & Voice Input
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/health` | Service & SQLite database health probe |
-| `GET` | `/api/categories` | Supported visual classification categories & metadata |
-| `POST`| `/api/analyze` | AI Waste packaging classification (multipart/form-data) |
-| `POST`| `/api/ocr/expiry` | OCR text extraction and expiry-date parsing |
-| `POST`| `/api/disposal/recommend` | Deterministic rules engine recommendation |
-| `GET` | `/api/disposal-guide` | Searchable disposal guide articles |
-| `GET` | `/api/facilities` | Collection facilities search with city/PIN/category filters |
-| `GET` | `/api/facilities/{id}` | Single facility details |
-| `GET` | `/api/dashboard/summary` | Digital Twin KPI summary numbers |
-| `GET` | `/api/dashboard/analytics`| Recharts analytical data (categories, timeline, quantities) |
-| `GET` | `/api/waste-items` | Filtered list of tracked waste items |
-| `POST`| `/api/waste-items` | Register new waste item into state machine |
-| `GET` | `/api/waste-items/{id}`| Detailed waste item with event history |
-| `POST`| `/api/waste-items/{id}/events` | Advance state machine status (strictly validates rules) |
-| `DELETE`| `/api/waste-items/{id}`| Delete waste item and events per Section 8 privacy |
-| `POST`| `/api/demo/seed` | Seed interactive demo items and lifecycle events |
-| `POST`| `/api/demo/reset`| Reset demo records |
-| `POST`| `/api/assistant/chat` | Grounded AI Q&A assistant with citations and refusal guardrails |
-| `GET` | `/api/admin/stats` | Admin database overview metrics (Admin-Protected) |
-| `GET` | `/api/admin/facilities` | List all facilities with verification details (Admin-Protected) |
-| `POST`| `/api/admin/facilities` | Create new collection facility record (Admin-Protected) |
-| `PUT` | `/api/admin/facilities/{id}` | Update collection facility record (Admin-Protected) |
-| `PATCH`| `/api/admin/facilities/{id}/verification` | Toggle facility verification status (Admin-Protected) |
-| `DELETE`| `/api/admin/facilities/{id}` | Delete collection facility (Admin-Protected) |
-| `GET` | `/api/admin/rules` | List all disposal rules with verification details (Admin-Protected) |
-| `POST`| `/api/admin/rules` | Add new disposal guidance rule (Admin-Protected) |
-| `PUT` | `/api/admin/rules/{id}` | Update disposal guidance rule (Admin-Protected) |
-| `PATCH`| `/api/admin/rules/{id}/verification` | Toggle disposal rule verification status (Admin-Protected) |
-| `DELETE`| `/api/admin/rules/{id}` | Delete disposal guidance rule (Admin-Protected) |
-| `POST`| `/api/admin/events` | Log verified batch destruction or processing event (Admin-Protected) |
-| `DELETE`| `/api/admin/waste-items/{id}` | Permanently delete waste item and audit trail (Admin-Protected) |
+### Assistant Engine Modes
+- **Rules-Backed FAQ Mode (`rules_grounded`):** Default zero-dependency mode. Matches user queries against verified disposal rules and packaging guide passages.
+- **LLM-Grounded Mode (`llm_grounded`):** Activated when `GEMINI_API_KEY` or `OPENAI_API_KEY` is present. Prompts the LLM strictly with retrieved guidance context.
+- **Mode Badge:** The active mode is visibly labelled at the top of the chat interface.
+
+### Emergency Refusal Guardrails
+- Queries mentioning poisoning, overdoses, chemical ingestion, or pet/child ingestion trigger an immediate clinical safety refusal (`refused=true`).
+- The assistant renders a high-visibility red alert bubble and directs the user to emergency services: **Emergency Hotline (112)** or National Poison Control.
+
+### Voice Input (Web Speech API)
+- **Browser Compatibility:** Google Chrome and Microsoft Edge support the Web Speech API natively. If an unsupported browser is detected, the microphone button is hidden and the note *"Voice input isn't supported in this browser; please type."* is displayed.
+- **User-Triggered Only:** The microphone is never accessed automatically.
+- **One-Time Privacy Notice:** On first mic click, the application displays:
+  > *"Voice recognition is provided by your browser and may send audio to your browser vendor's speech service. PharmaCycle AI never records, stores, or uploads audio ourselves, and never sends audio to our backend."*
+- **Live Transcription & Editing:** Interim speech results appear live in the input box. The final transcript remains completely editable. The user explicitly presses Send; recognition never auto-submits.
+- **Language Selector:** Supports English (India) `en-IN` (default), Hindi `hi-IN`, and Kannada `kn-IN`, with a visible note that answers are in English.
+- **Error Handling:** Graceful error messages for `not-allowed`, `no-speech`, `audio-capture`, and `network`.
+- **Lifecycle Cleanup:** Recognition automatically aborts when the drawer closes, the route changes, or the component unmounts.
+
+### Text-to-Speech (speechSynthesis)
+- **Read Aloud Button:** Available on each assistant answer bubble.
+- **Global Voice Replies Toggle:** In the voice toolbar (OFF by default). When enabled, automatically speaks new assistant answers.
+- **Stop Audio Button:** Immediately halts speech synthesis via `window.speechSynthesis.cancel()`.
+- **URL & Markdown Sanitization:** Strips URLs (`https://...`), citations, and markdown formatting before speaking.
 
 ---
 
-## 8. Grounded AI Disposal Assistant (Section 4E)
+## 7. How to Load and Reset Demo Data
 
-The **Disposal Assistant** (`/assistant`) provides interactive retrieval-based guidance for pharmaceutical waste questions:
-
-- **Strict Knowledge Grounding:** Answers are generated **solely** from approved `DisposalRule` records and packaging guide articles.
-- **Dual Engine Modes:**
-  - **LLM-Grounded Mode (`llm_grounded`):** Activated when `GEMINI_API_KEY` (or `OPENAI_API_KEY`) is set in the environment. The LLM is prompted strictly with retrieved guidance context and commanded never to hallucinate external facts.
-  - **Rules-Backed FAQ Mode (`rules_grounded`):** Deterministic, zero-network fallback that pairs user questions with verified passages. Active mode is visibly labelled in the UI.
-- **Source References:** Every reply includes verified health and environmental citations (FDA, WHO, WRAP, EPA).
-- **Refusal Guardrails:**
-  - **Medical Advice & Diagnosis:** Strictly refuses assessing diseases, recommending drug dosages, or advising ingestion.
-  - **Appearance-Based Safety Claims:** Strictly refuses claiming medicine is safe from visual appearance alone (explains that chemical potency loss and degradation occur without visible changes).
-  - **Facility Hallucinations:** Strictly avoids inventing addresses or telephone numbers; routes users to the verified `/facilities` directory or local municipal authority.
-  - **Ungrounded Topics:** Queries outside pharmaceutical waste disposal return *"Information unavailable."*
-- **Four Spec Example Questions Handled:**
-  1. *"How should I dispose of expired tablets?"*
-  2. *"Can I put an empty blister pack in a plastic recycling bin?"*
-  3. *"How do I read the expiry date on this medicine?"*
-  4. *"What should I do if the expiry date is unreadable?"*
+On the **Digital Twin Dashboard** (`/dashboard`):
+- Click **"Seed Demo Data"** to load 6 sample pharmaceutical waste items across the lifecycle states (`identified`, `awaiting_confirmation`, `collection_pending`, `collected`, `processed`) along with supporting audit events.
+- Click **"Reset Demo Data"** to purge all demo-marked records while preserving genuine user scans.
+- Alternatively, call the REST API endpoints:
+  ```powershell
+  Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/demo/seed
+  Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/demo/reset
+  ```
 
 ---
 
-## 9. Development Admin Console & Security Limitations (Section 4J)
+## 8. Development Admin Console (`/admin`)
 
-The **Admin Management Console** (`/admin`) provides administrative controls for facility registries and disposal guidance:
-
-- **Token Protection:** Protected by the environment variable `ADMIN_SECRET_KEY` (defaulting in dev to `pharmacycle-dev-admin-key-2026`). Sent via HTTP header `X-Admin-Key` or URL query parameter `?admin_token=`. No hardcoded credentials exist in source code.
-- **Hidden Navigation:** Per Section 4J, the `/admin` route is intentionally excluded from public navigation menus and footers.
-- **Full CRUD Capabilities:**
-  - **Facilities:** Create, read, update, delete, and toggle verification status (`verified` vs `unverified`).
-  - **Guidance Rules:** Create, read, update, delete, and toggle verification status (`verified` vs `unverified`).
-  - **Event Logging:** Record collection custody transfers and high-temperature thermal destruction events linked to waste items.
-  - **Waste Item Deletion:** Full deletion option for tracked items (`DELETE /api/admin/waste-items/{id}` and public `DELETE /api/waste-items/{id}`) per user privacy protocol.
-- **Development Limitations & Security Notice:**
+- **Route:** `http://localhost:5173/admin` (intentionally excluded from public navigation menus per Section 4J).
+- **Authentication:** Protected by the token configured in `ADMIN_SECRET_KEY` (default: `pharmacycle-dev-admin-key-2026`).
+- **Features:**
+  - View database counts (facilities, rules, items, events).
+  - Add, edit, verify, or delete collection facilities.
+  - Add, edit, verify, or delete disposal guidance rules.
+  - Log batch collection custody transfers and high-temperature processing events.
+- **Security Limitation Notice:**
   > [!WARNING]
-  > The admin console utilizes a shared secret token mechanism (`X-Admin-Key`) for rapid development, testing, and continuous integration. It does **not** provide granular per-user identity, audit log signatures, or multi-factor authentication. In a production enterprise deployment, this MUST be replaced by OAuth 2.0 / OIDC with fine-grained Role-Based Access Control (RBAC), TLS termination, and rate limiting.
+  > The admin console uses a shared token (`X-Admin-Key`) designed for local development and hackathon evaluation. In a production enterprise deployment, this MUST be replaced by OAuth 2.0 / OIDC with fine-grained Role-Based Access Control (RBAC), audit log signatures, and rate limiting.
 
 ---
 
-## 10. Privacy & Data Retention Policy (Section 8)
+## 9. Automated Testing & Verification
 
-- **Zero Image Archiving:** Uploaded packaging images are processed strictly in memory and discarded immediately upon analysis completion.
-- **Delete-Record Option:** Users and administrators can delete any tracked waste item and its associated lifecycle events at any time via the UI or REST API.
-- **Audit Logging:** System logs sanitize sensitive health information and personal identifiable data (PID).
+### Running Backend Tests (pytest)
+```powershell
+cd backend
+.\venv\Scripts\Activate.ps1
+python -m pytest -v
+```
+**Results:** **82 passed** (0 failed, 2 warnings) in ~1.5 seconds.
+- `tests/test_health.py` (2 tests): Database connection probe, health check.
+- `tests/test_models.py` (6 tests): SQLAlchemy database constraints, unique foreign keys.
+- `tests/test_state_machine.py` (5 tests): Strict 5-stage lifecycle state machine transitions, invalid leap rejections, processing proof requirements.
+- `tests/test_analyze.py` (8 tests): Image format validation (JPEG/PNG/WEBP), 5MB size limit rejection, demo classifier transparency (`confidence=null`).
+- `tests/test_ocr.py` (20 tests): Date parsing formats (`MM/YYYY`, `MM/YY`, `DD/MM/YYYY`), `EXP` vs `MFG` discrimination, ambiguous date flags.
+- `tests/test_disposal.py` (8 tests): Deterministic rules engine recommendations across all 5 waste categories, no-flush mandate for medicines.
+- `tests/test_facilities.py` (7 tests): City and PIN search, category acceptance filtering, `EXAMPLE – not a real facility` labelling checks.
+- `tests/test_waste_items_and_dashboard.py` (6 tests): KPI aggregation, process flow counts, user-reported vs collected vs processed quantities, demo seed and reset.
+- `tests/test_assistant_and_admin.py` (20 tests): Grounded assistant retrieval, intent routing, emergency refusals, token-protected admin endpoints.
+
+### Running Frontend Tests (Vitest)
+```powershell
+cd frontend
+npm test
+```
+**Results:** **13 passed** across 2 test files in ~2.5 seconds:
+- `src/tests/AssistantChat.test.tsx` (5 tests): Typed question send/reply, verified source links, emergency refusal bubble rendering, input preservation on network failure, drawer focus trap & Escape handling.
+- `src/tests/AssistantVoice.test.tsx` (8 tests): Unsupported browser detection, first-use one-time privacy notice, interim & final transcript live updates, transcript editing before send, permission denied handling, language selector switching, drawer close cleanup, and text-to-speech read aloud/stop controls.
+
+### Running TypeScript Check & Production Build
+```powershell
+cd frontend
+npm run build
+```
+**Results:** `tsc -b && vite build` succeeds with **0 errors**.
 
 ---
 
-## 11. Features Requiring External API Keys or Trained Models
+## 10. Features Requiring External API Keys or Trained Models
 
-The application is engineered to be **100% functional out-of-the-box without paid API keys or proprietary weights**. However, the following optional capabilities connect to external resources when configured:
+PharmaCycle AI is **100% functional out-of-the-box without paid API keys or proprietary weights**. The following optional capabilities connect to external resources when configured:
 
-| Capability | Default State (Zero-Dependency) | External Dependency / Model Requirement |
+| Capability | Default State (Zero-Dependency) | External Dependency / Requirement |
 |---|---|---|
-| **AI Packaging Vision Model** | Runs in `MODEL_MODE=demo` with sample image fixtures and `confidence=null`. | Requires pre-trained model weights (ONNX format) trained on pharmaceutical packaging images (pointed to by `MODEL_PATH`). |
-| **Expiry-Date OCR** | Transparently detects missing EasyOCR/PaddleOCR libraries and gracefully prompts the user with manual date entry. | Requires `easyocr` Python package and downloaded PyTorch detection/recognition weights (requires ~150MB disk space). |
+| **AI Packaging Vision Model** | Runs in `MODEL_MODE=demo` with sample image fixtures and `confidence=null`. | Requires pre-trained model weights (ONNX format) placed at `MODEL_PATH`. |
+| **Expiry-Date OCR** | Transparently runs in demo/rule-based OCR mode with clear manual date entry fallback. | Requires `easyocr` Python package and downloaded PyTorch detection/recognition weights (~150MB). |
 | **Grounded AI Assistant** | Operates in deterministic `rules_grounded` FAQ mode matching queries against the verified disposal rule database. | Requires `GEMINI_API_KEY` (or `OPENAI_API_KEY`) to run in generative `llm_grounded` conversational mode. |
-| **Interactive Facility Maps** | Uses standard Leaflet.js with free OpenStreetMap raster tiles. No API key required. | Google Maps or Mapbox tiles can be swapped in if vector styling or commercial traffic layers are desired. |
+| **Interactive Facility Maps** | Uses standard Leaflet.js with free OpenStreetMap tiles. No API key required. | Google Maps or Mapbox tiles can be configured if commercial traffic layers are desired. |
 
 ---
 
-## 12. Automated Test Results
+## 11. Known Prototype Limitations
 
-The codebase is thoroughly verified by automated tests across both the Python FastAPI backend and the React TypeScript frontend:
-
-### Backend Test Suite (`pytest -v`)
-- **Total Tests:** 78 passed (0 failed, 2 Starlette deprecation notices)
-- **Execution Time:** ~1.60s
-- **Module Coverage:**
-  - `tests/test_health.py` (2 tests): Database connection probe, health check endpoints.
-  - `tests/test_models.py` (6 tests): SQLAlchemy database constraints, unique foreign keys, and model schemas.
-  - `tests/test_state_machine.py` (5 tests): Strict 5-stage lifecycle state machine transitions, invalid leap rejections, and processing proof validations.
-  - `tests/test_analyze.py` (8 tests): Image format validation (JPEG/PNG/WEBP), 5MB size limit rejection, demo classifier transparency (`confidence=null`).
-  - `tests/test_ocr.py` (20 tests): Date parsing formats (`MM/YYYY`, `MM/YY`, `DD/MM/YYYY`), `EXP` vs `MFG` discrimination, ambiguous date flags.
-  - `tests/test_disposal.py` (8 tests): Deterministic rules engine recommendations across all 5 waste categories, no-flush mandate for medicines.
-  - `tests/test_facilities.py` (7 tests): City and PIN search, category acceptance filtering, `EXAMPLE – not a real facility` labelling checks.
-  - `tests/test_waste_items_and_dashboard.py` (6 tests): KPI aggregation, process flow counts, user-reported vs collected vs processed quantities, demo seed and reset.
-  - `tests/test_assistant_and_admin.py` (16 tests): Grounded assistant refusals (medical advice, appearance safety, facility fabrication), token-protected admin endpoints.
-
-### Frontend Quality & Type Checks (`npm run build`)
-- **TypeScript Compiler (`tsc -b`):** 0 errors. All interfaces in `src/types/index.ts` strictly conform to backend Pydantic schemas.
-- **Production Bundle (`vite build`):** Clean compilation into `dist/`. All 12 application pages and interactive components bundled successfully.
-
----
-
-## 13. Known Prototype Limitations & Production Roadmap
-
-As outlined in Section 4I of the specification, the prototype has defined boundaries:
-
-1. **Computer Vision Constraints:**
-   - Prototype cannot chemically analyze pill composition from a photograph; visual classification determines packaging category only.
-   - Poor lighting, motion blur, and crumpled blister foils may cause visual misclassification, requiring user manual verification.
-2. **Regulatory & Geographic Scope:**
-   - Seeded disposal guidance reflects standard international guidelines (WHO, US FDA, UK WRAP). Local municipal regulations vary significantly by municipality and take precedence.
-3. **Hardware & Scanning:**
-   - Video feed scanning relies on standard browser WebRTC camera APIs.
-4. **Single-Store Database:**
-   - Local SQLite database with WAL mode is used for prototyping. Production deployment should migrate to PostgreSQL / CockroachDB with read replicas and point-in-time recovery.
-
-
+1. **Physical Microphone Hardware Verification:**  
+   In automated testing and headless Chromium environments, acoustic capture through a physical hardware microphone could not be exercised. All Web Speech API event sequences (`onstart`, `onresult` with interim/final flags, `onerror`, `onend`, `abort`, `stop`) were verified using mock implementations in Vitest and interactive browser DOM testing.
+2. **Physical Audio Speaker Output:**  
+   Acoustic speaker output from `speechSynthesis.speak()` was verified via DOM dispatch and speech synthesis event binding rather than physical audio decibel measurement.
+3. **Computer Vision Scope:**  
+   Visual classification identifies packaging categories (blister foils, bottles, cartons, loose tablets); it does not chemically analyze pill chemical composition or pharmacological purity from a photograph.
+4. **Local SQLite Database:**  
+   Local SQLite database with WAL mode is used for prototyping. Production deployment should migrate to PostgreSQL with read replicas and point-in-time recovery.
