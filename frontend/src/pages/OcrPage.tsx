@@ -17,8 +17,10 @@ import {
   Tag
 } from 'lucide-react';
 import type { OcrResponse } from '../types';
+import { useAssistant } from '../context/AssistantContext';
 
 export const OcrPage: React.FC = () => {
+  const { setWasteContext } = useAssistant();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -78,6 +80,9 @@ export const OcrPage: React.FC = () => {
 
       const data: OcrResponse = await res.json();
       setOcrResult(data);
+      if (data.candidate_date) {
+        setWasteContext('Medicine or tablet strip', `Expiry date: ${data.candidate_date}`, data.is_expired ? 'Expired' : 'Valid');
+      }
       if (data.verification_status === 'user_provided' || data.verification_status === 'confirmed') {
         setUserConfirmed(true);
       } else {

@@ -16,11 +16,14 @@ import {
   FileText,
   Activity,
   HeartPulse,
-  Leaf
+  Leaf,
+  Bot
 } from 'lucide-react';
 import type { HealthResponse } from '../types';
+import { useAssistant } from '../context/AssistantContext';
 
 export const HomePage: React.FC = () => {
+  const { openDrawer } = useAssistant();
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
   useEffect(() => {
@@ -70,6 +73,15 @@ export const HomePage: React.FC = () => {
                   <BookOpen className="w-4 h-4 text-tealAccent-600" />
                   Explore Disposal Guide
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={() => openDrawer()}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-tealAccent-50 hover:bg-tealAccent-100 text-tealAccent-900 font-semibold text-sm border border-tealAccent-300 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                >
+                  <Bot className="w-4 h-4 text-tealAccent-700" />
+                  Ask the Assistant
+                </button>
               </div>
 
               {/* System Connectivity Callout */}

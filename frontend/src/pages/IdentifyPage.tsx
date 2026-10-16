@@ -23,8 +23,10 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import type { AnalyzeResponse, DisposalRecommendResponse } from '../types';
+import { useAssistant } from '../context/AssistantContext';
 
 export const IdentifyPage: React.FC = () => {
+  const { setWasteContext } = useAssistant();
   // State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -358,6 +360,7 @@ export const IdentifyPage: React.FC = () => {
 
       const data: AnalyzeResponse = await response.json();
       setResult(data);
+      setWasteContext(data.predicted_category, data.explanation);
     } catch (err: any) {
       setErrorMessage(err.message || 'Network error communicating with the backend analysis service.');
     } finally {

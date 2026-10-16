@@ -214,9 +214,24 @@ export interface DashboardAnalyticsResponse {
   quantities: QuantityMetrics;
 }
 
+export interface SuggestedAction {
+  label: string;
+  action_type: 'navigate' | 'prompt' | 'emergency_call' | 'link';
+  payload: string;
+}
+
+export interface ChatContext {
+  page?: string;
+  waste_category?: string;
+  item_id?: number;
+  user_location?: string;
+  analysis_summary?: string;
+  expiry_status?: string;
+}
+
 export interface ChatSource {
   title: string;
-  url?: string;
+  url?: string | null;
 }
 
 export interface ChatMessage {
@@ -224,17 +239,24 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   mode?: string;
+  intent?: string;
+  refused?: boolean;
   sources?: ChatSource[];
   disclaimer?: string;
+  actions?: SuggestedAction[];
+  suggestions?: string[];
   timestamp: string;
 }
 
 export interface ChatResponse {
   reply: string;
   mode: string;
+  intent?: string;
+  refused?: boolean;
   sources: ChatSource[];
   disclaimer: string;
   suggestions: string[];
+  actions?: SuggestedAction[];
 }
 
 export interface AdminStats {

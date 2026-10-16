@@ -279,6 +279,7 @@ def check_emergency_guardrail(msg_lower: str) -> Optional[ChatResponse]:
             ),
             mode="rules_grounded",
             intent="emergency_refusal",
+            refused=True,
             sources=[
                 ChatSource(title="American Association of Poison Control Centers", url="https://www.poison.org"),
                 ChatSource(title="WHO International Programme on Chemical Safety", url="https://www.who.int")
@@ -312,6 +313,7 @@ def check_medical_advice_guardrail(msg_lower: str) -> Optional[ChatResponse]:
             ),
             mode="rules_grounded",
             intent="medical_advice_refusal",
+            refused=True,
             sources=[
                 ChatSource(title="PharmaCycle AI Safety Policy", url="/safety")
             ],
@@ -342,6 +344,7 @@ def check_appearance_safety_guardrail(msg_lower: str) -> Optional[ChatResponse]:
             ),
             mode="rules_grounded",
             intent="appearance_safety_refusal",
+            refused=True,
             sources=[
                 ChatSource(title="PharmaCycle AI Safety Policy", url="/safety"),
                 ChatSource(title="FDA Guidance on Drug Expiration", url="https://www.fda.gov")
@@ -372,6 +375,7 @@ def check_invent_facilities_guardrail(msg_lower: str) -> Optional[ChatResponse]:
             ),
             mode="rules_grounded",
             intent="invent_facilities_refusal",
+            refused=True,
             sources=[
                 ChatSource(title="PharmaCycle Collection Locator", url="/facilities")
             ],

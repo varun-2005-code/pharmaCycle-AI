@@ -36,6 +36,7 @@ class ChatResponse(BaseModel):
     reply: str
     mode: str = Field("rules_grounded", description="'rules_grounded' or 'llm_grounded'")
     intent: Optional[str] = Field("disposal_query", description="Detected intent category")
+    refused: bool = Field(False, description="True if query triggered a safety refusal guardrail")
     sources: List[ChatSource] = Field(default_factory=list)
     disclaimer: str
     suggestions: List[str] = Field(default_factory=list)

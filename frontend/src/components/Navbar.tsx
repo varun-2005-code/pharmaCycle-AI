@@ -53,7 +53,7 @@ export const Navbar: React.FC = () => {
     { name: 'Disposal Guide', path: '/guide', icon: BookOpen },
     { name: 'Collection Centres', path: '/facilities', icon: MapPin },
     { name: 'Dashboard', path: '/dashboard', icon: BarChart3 },
-    { name: 'AI Assistant', path: '/assistant', icon: Bot },
+    { name: 'Assistant', path: '/assistant', icon: Bot },
     { name: 'About', path: '/about', icon: Info },
   ];
 
