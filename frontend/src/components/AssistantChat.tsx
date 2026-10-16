@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Bot,
   Send,
@@ -14,10 +14,16 @@ import {
   HelpCircle,
   ArrowRight,
   PhoneCall,
-  Sparkle
+  Sparkle,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import type { ChatMessage, ChatResponse, SuggestedAction, ChatContext } from '../types';
 import { useAssistant } from '../context/AssistantContext';
+import { useSpeechRecognition, VoiceLanguage } from '../hooks/useSpeechRecognition';
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 
 const SPEC_EXAMPLE_QUESTIONS = [
   'How should I dispose of expired tablets?',
@@ -36,6 +42,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   onCloseDrawer
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeContext, clearWasteContext, initialQuery, clearInitialQuery } = useAssistant();
 
   const [activeMode, setActiveMode] = useState<'rules_grounded' | 'llm_grounded'>('rules_grounded');
@@ -62,9 +69,53 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [activeSuggestions, setActiveSuggestions] = useState<string[]>(SPEC_EXAMPLE_QUESTIONS);
   const [announcement, setAnnouncement] = useState<string>('');
+  const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const baseInputBeforeSpeechRef = useRef<string>('');
+
+  // Speech Recognition Hook (Web Speech API)
+  const {
+    isSupported: isSpeechSupported,
+    isListening,
+    error: speechError,
+    language: selectedVoiceLang,
+    setLanguage: setSelectedVoiceLang,
+    startListening,
+    stopListening,
+    abortListening,
+    clearError: clearSpeechError
+  } = useSpeechRecognition({
+    onInterimTranscript: (interimText, accumulatedFinal) => {
+      // Live transcription into input box; final transcript stays EDITABLE and is NOT sent automatically
+      const base = baseInputBeforeSpeechRef.current;
+      const speechPart = accumulatedFinal
+        ? (interimText ? `${accumulatedFinal} ${interimText}` : accumulatedFinal)
+        : interimText;
+      const combined = base ? `${base} ${speechPart}` : speechPart;
+      setInputMessage(combined);
+    },
+    onFinalTranscript: (finalText) => {
+      const base = baseInputBeforeSpeechRef.current;
+      const combined = base ? `${base} ${finalText}` : finalText;
+      setInputMessage(combined);
+    },
+    onError: (errMsg) => {
+      setAnnouncement(`Voice recognition error: ${errMsg}`);
+    }
+  });
+
+  // Speech Synthesis Hook (Web Speech API)
+  const {
+    isSupported: isTtsSupported,
+    isSpeaking,
+    activeMessageId: ttsActiveMessageId,
+    voiceRepliesEnabled,
+    toggleVoiceReplies,
+    speak,
+    stop: stopSpeaking
+  } = useSpeechSynthesis();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -74,6 +125,19 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     scrollToBottom();
   }, [messages, loading, errorMessage]);
 
+  // Clean up voice input and speech synthesis on route change or drawer closing/unmount
+  useEffect(() => {
+    abortListening();
+    stopSpeaking();
+  }, [location.pathname]);
+
+  useEffect(() => {
+    return () => {
+      abortListening();
+      stopSpeaking();
+    };
+  }, []);
+
   // Handle initialQuery triggered from external CTA (e.g. hero button or context chip)
   useEffect(() => {
     if (initialQuery) {
@@ -82,7 +146,41 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     }
   }, [initialQuery]);
 
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+      setAnnouncement('Voice recognition stopped.');
+      return;
+    }
+
+    // Spec Requirement: Start microphone ONLY after user click.
+    // Show a one-time notice on first use. Never record, store or upload audio ourselves.
+    const hasAcknowledged = localStorage.getItem('pharmacycle_voice_privacy_acknowledged');
+    if (!hasAcknowledged) {
+      setShowPrivacyNotice(true);
+      setAnnouncement('Voice recognition privacy notice displayed.');
+      return;
+    }
+
+    baseInputBeforeSpeechRef.current = inputMessage.trim();
+    startListening();
+    setAnnouncement(`Microphone listening in ${selectedVoiceLang}. Speak your question.`);
+  };
+
+  const handleAcceptPrivacyNotice = () => {
+    localStorage.setItem('pharmacycle_voice_privacy_acknowledged', 'true');
+    setShowPrivacyNotice(false);
+    baseInputBeforeSpeechRef.current = inputMessage.trim();
+    startListening();
+    setAnnouncement(`Microphone listening in ${selectedVoiceLang}. Speak your question.`);
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
+    // If recognition is active, stop it before sending
+    if (isListening) {
+      stopListening();
+    }
+
     const rawText = textToSend !== undefined ? textToSend : inputMessage;
     const text = rawText.trim();
     if (!text || loading) return;
@@ -100,8 +198,8 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    // Clear input field optimistically
     setInputMessage('');
+    baseInputBeforeSpeechRef.current = '';
     setLoading(true);
     setAnnouncement(`Question asked: ${text}. Retrieving disposal guidance.`);
 
@@ -159,6 +257,11 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       setMessages((prev) => [...prev, assistantMsg]);
       setAnnouncement(`Assistant replied: ${data.reply.slice(0, 80)}...`);
 
+      // Global voice-replies: if enabled, speak assistant response aloud
+      if (voiceRepliesEnabled && data.reply) {
+        speak(data.reply, assistantMsg.id, selectedVoiceLang);
+      }
+
       if (data.suggestions && data.suggestions.length > 0) {
         setActiveSuggestions(data.suggestions);
       }
@@ -182,33 +285,64 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     }
   };
 
-  // Render suggested action click handler (strictly interactive; never auto-navigates)
+  const handleClearChat = () => {
+    abortListening();
+    stopSpeaking();
+    clearSpeechError();
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        role: 'assistant',
+        content:
+          'Conversation cleared. Ask any question about safe pharmaceutical waste disposal, recycling blister packs, unreadable expiry dates, or take-back collection.',
+        mode: 'rules_grounded',
+        refused: false,
+        sources: [],
+        disclaimer: 'General disposal guidance only.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+    setActiveSuggestions(SPEC_EXAMPLE_QUESTIONS);
+    setErrorMessage(null);
+    setAnnouncement('Chat history cleared.');
+  };
+
   const handleActionClick = (action: SuggestedAction) => {
+    if (action.action_type === 'emergency_call') {
+      window.location.href = `tel:${action.payload}`;
+      return;
+    }
+
     if (action.action_type === 'navigate') {
-      if (onCloseDrawer) {
+      if (layoutMode === 'drawer' && onCloseDrawer) {
         onCloseDrawer();
       }
       navigate(action.payload);
-    } else if (action.action_type === 'emergency_call') {
-      window.location.href = `tel:${action.payload}`;
-    } else if (action.action_type === 'prompt') {
-      handleSendMessage(action.payload);
-    } else if (action.action_type === 'link') {
+      return;
+    }
+
+    if (action.action_type === 'link') {
       window.open(action.payload, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (action.action_type === 'prompt') {
+      handleSendMessage(action.payload);
+      return;
     }
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white ${layoutMode === 'drawer' ? '' : 'rounded-3xl border border-emerald-100 shadow-soft overflow-hidden'}`}>
-      
-      {/* Screen Reader Live Region for Announcements */}
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
+    <div className="flex flex-col h-full bg-white rounded-3xl border border-emerald-100 shadow-soft overflow-hidden">
+      {/* Live Region for Screen Reader Announcements */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
 
-      {/* Top Status Bar: Mode Badge & Clear Conversation */}
+      {/* Header Bar */}
       <div className="bg-slate-50 px-4 sm:px-6 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2 text-xs shrink-0">
         <div className="flex items-center gap-2">
+          {/* Mode Badge Requirement */}
           {activeMode === 'llm_grounded' ? (
             <span
               data-testid="mode-badge-llm"
@@ -228,14 +362,10 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           )}
         </div>
 
+        {/* Clear Conversation Button */}
         <button
           type="button"
-          onClick={() => {
-            setMessages([messages[0]]);
-            setActiveSuggestions(SPEC_EXAMPLE_QUESTIONS);
-            setErrorMessage(null);
-            setAnnouncement('Conversation history cleared.');
-          }}
+          onClick={handleClearChat}
           className="text-[11px] text-slate-500 hover:text-botanical-900 flex items-center gap-1 font-medium cursor-pointer transition-colors"
           aria-label="Clear conversation history"
         >
@@ -244,8 +374,8 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         </button>
       </div>
 
-      {/* Context Awareness Banner (if analysis result exists in state) */}
-      {activeContext?.waste_category && (
+      {/* Active Context Banner */}
+      {activeContext && (
         <div
           data-testid="context-banner"
           className="bg-emerald-50/90 border-b border-emerald-200 px-4 py-2 flex items-center justify-between text-xs text-emerald-950 shrink-0"
@@ -288,6 +418,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         {messages.map((msg) => {
           const isEmergency = msg.refused || msg.intent === 'emergency_refusal';
           const isUnavailable = msg.content.includes('Information unavailable');
+          const isThisSpeaking = isSpeaking && ttsActiveMessageId === msg.id;
 
           return (
             <div
@@ -325,33 +456,70 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                 }`}
                 data-testid={isEmergency ? 'emergency-refusal-bubble' : undefined}
               >
-                {/* Assistant Message Header / Refusal Badge */}
+                {/* Assistant Message Header / Refusal Badge / Read Aloud */}
                 {msg.role === 'assistant' && (
-                  <div className="mb-2 flex items-center gap-2">
-                    {isEmergency ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md font-extrabold tracking-wide uppercase bg-rose-600 text-white inline-flex items-center gap-1 shadow-2xs">
-                        <AlertOctagon className="w-3 h-3 text-white" />
-                        Critical Safety Refusal
-                      </span>
-                    ) : (
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-md font-bold tracking-tight inline-flex items-center gap-1 ${
-                          msg.mode === 'llm_grounded'
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                            : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                        }`}
-                      >
-                        {msg.mode === 'llm_grounded' ? (
-                          <>
-                            <Sparkles className="w-2.5 h-2.5 text-amber-700" /> LLM-grounded
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" /> Rules-backed FAQ
-                          </>
-                        )}
-                      </span>
-                    )}
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {isEmergency ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-md font-extrabold tracking-wide uppercase bg-rose-600 text-white inline-flex items-center gap-1 shadow-2xs">
+                          <AlertOctagon className="w-3 h-3 text-white" />
+                          Critical Safety Refusal
+                        </span>
+                      ) : (
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-md font-bold tracking-tight inline-flex items-center gap-1 ${
+                            msg.mode === 'llm_grounded'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                          }`}
+                        >
+                          {msg.mode === 'llm_grounded' ? (
+                            <>
+                              <Sparkles className="w-2.5 h-2.5 text-amber-700" /> LLM-grounded
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" /> Rules-backed FAQ
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Read Aloud Button per Assistant Answer */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isThisSpeaking) {
+                          stopSpeaking();
+                          setAnnouncement('Speech playback stopped.');
+                        } else {
+                          speak(msg.content, msg.id, selectedVoiceLang);
+                          setAnnouncement('Reading assistant reply aloud.');
+                        }
+                      }}
+                      className={`text-[10px] px-2 py-0.5 rounded-md font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
+                        isThisSpeaking
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
+                          : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs'
+                      }`}
+                      aria-label={
+                        isThisSpeaking ? 'Stop reading answer aloud' : 'Read answer aloud'
+                      }
+                      data-testid={`read-aloud-btn-${msg.id}`}
+                    >
+                      {isThisSpeaking ? (
+                        <>
+                          <VolumeX className="w-3 h-3 text-rose-600" />
+                          <span>Stop</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-3 h-3 text-slate-500" />
+                          <span>Read aloud</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 )}
 
@@ -514,8 +682,164 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         </div>
       )}
 
+      {/* Voice Controls Toolbar (Language selection, note, global voice-replies toggle, audio stop) */}
+      <div className="bg-slate-50/80 border-t border-slate-100 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="voice-lang-select" className="text-[11px] font-semibold text-slate-600">
+              Voice Lang:
+            </label>
+            <select
+              id="voice-lang-select"
+              value={selectedVoiceLang}
+              onChange={(e) => {
+                const newLang = e.target.value as VoiceLanguage;
+                setSelectedVoiceLang(newLang);
+                setAnnouncement(`Speech recognition language changed to ${newLang}.`);
+              }}
+              aria-label="Select speech language"
+              className="text-[11px] bg-white border border-slate-200 rounded-md px-2 py-0.5 font-medium text-slate-700 focus:outline-hidden focus:border-tealAccent-500 shadow-2xs"
+            >
+              <option value="en-IN">English (India) [en-IN]</option>
+              <option value="hi-IN">Hindi (हिन्दी) [hi-IN]</option>
+              <option value="kn-IN">Kannada (ಕನ್ನಡ) [kn-IN]</option>
+            </select>
+          </div>
+
+          {/* Visible note that answers are in English */}
+          <span className="text-[10px] text-slate-500 font-medium">
+            (Answers are in English)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Global Voice-replies toggle (OFF by default) */}
+          <button
+            type="button"
+            onClick={() => {
+              toggleVoiceReplies();
+              setAnnouncement(`Voice replies ${!voiceRepliesEnabled ? 'enabled' : 'disabled'}.`);
+            }}
+            aria-pressed={voiceRepliesEnabled}
+            aria-label="Toggle voice replies automatically reading out answers"
+            data-testid="toggle-voice-replies"
+            className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md font-medium border transition-colors cursor-pointer shadow-2xs ${
+              voiceRepliesEnabled
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold'
+                : 'bg-white border-slate-200 text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            <Volume2 className={`w-3.5 h-3.5 ${voiceRepliesEnabled ? 'text-emerald-700' : 'text-slate-400'}`} />
+            <span>Voice replies: {voiceRepliesEnabled ? 'ON' : 'OFF'}</span>
+          </button>
+
+          {/* Stop Audio Button if currently speaking */}
+          {isSpeaking && (
+            <button
+              type="button"
+              onClick={() => {
+                stopSpeaking();
+                setAnnouncement('Speech playback stopped.');
+              }}
+              data-testid="stop-speaking-button"
+              className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white font-bold animate-pulse shadow-2xs cursor-pointer"
+              aria-label="Stop audio playback"
+            >
+              <VolumeX className="w-3.5 h-3.5" />
+              <span>Stop Audio</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Input Form Bar */}
       <div className="p-3 sm:p-4 bg-white border-t border-slate-100 shrink-0">
+        {/* Active Listening Status Indicator */}
+        {isListening && (
+          <div
+            className="mb-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2 shadow-2xs animate-pulse"
+            data-testid="listening-status-indicator"
+            role="status"
+          >
+            <div className="flex items-center gap-2 font-medium">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping shrink-0" />
+              <span>Listening… Speak now ({selectedVoiceLang}). Interim speech appears in input box.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                stopListening();
+                setAnnouncement('Voice recognition stopped.');
+              }}
+              className="text-xs font-bold text-rose-700 underline hover:text-rose-900 cursor-pointer"
+            >
+              Stop
+            </button>
+          </div>
+        )}
+
+        {/* Speech Error Banner */}
+        {speechError && (
+          <div
+            className="mb-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 shadow-2xs"
+            data-testid="speech-error-banner"
+            role="alert"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{speechError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={clearSpeechError}
+              className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer font-bold"
+              aria-label="Dismiss speech error"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* One-time Privacy Notice (Spec requirement) */}
+        {showPrivacyNotice && (
+          <div
+            className="mb-3 p-3.5 rounded-2xl bg-slate-900 text-white text-xs space-y-2 shadow-xl border border-tealAccent-500/40"
+            data-testid="speech-privacy-notice"
+            role="dialog"
+            aria-label="Browser Voice Recognition Notice"
+          >
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="w-5 h-5 text-tealAccent-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold text-white text-xs">Browser Voice Recognition Notice</p>
+                <p className="text-slate-300 leading-normal text-[11px]">
+                  Voice recognition is provided by your browser and may send audio to your browser vendor's speech service.
+                </p>
+                <p className="text-tealAccent-300 text-[10px]">
+                  PharmaCycle AI never records, stores, or uploads audio ourselves, and never sends audio to our backend.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowPrivacyNotice(false)}
+                className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAcceptPrivacyNotice}
+                data-testid="accept-privacy-notice-btn"
+                className="px-3.5 py-1 rounded-lg bg-tealAccent-500 hover:bg-tealAccent-400 text-botanical-950 font-bold text-xs cursor-pointer shadow-2xs"
+              >
+                I Understand & Start Mic
+              </button>
+            </div>
+          </div>
+        )}
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -537,6 +861,30 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-hidden focus:border-tealAccent-600 resize-none max-h-24"
             disabled={loading}
           />
+
+          {/* Voice Input Mic Button (Only rendered if supported) */}
+          {isSpeechSupported && (
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={loading}
+              aria-label={isListening ? 'Stop voice listening' : 'Start voice input'}
+              aria-pressed={isListening}
+              data-testid="voice-input-button"
+              className={`px-3 sm:px-3.5 rounded-xl border transition-all flex items-center justify-center shadow-2xs cursor-pointer ${
+                isListening
+                  ? 'bg-rose-50 border-rose-300 text-rose-600 ring-2 ring-rose-200 hover:bg-rose-100'
+                  : 'bg-white border-slate-200 text-slate-600 hover:text-botanical-900 hover:border-tealAccent-500'
+              }`}
+            >
+              {isListening ? (
+                <MicOff className="w-4 h-4 text-rose-600 animate-pulse" />
+              ) : (
+                <Mic className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={loading || !inputMessage.trim()}
@@ -546,6 +894,16 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             <Send className="w-4 h-4 text-tealAccent-400" />
           </button>
         </form>
+
+        {/* Feature Detection: note if voice input is unsupported */}
+        {!isSpeechSupported && (
+          <div
+            className="mt-1.5 text-center text-[11px] text-slate-400 italic"
+            data-testid="voice-unsupported-note"
+          >
+            Voice input isn't supported in this browser; please type.
+          </div>
+        )}
 
         {/* Spec Notice Requirement */}
         <div className="mt-2 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
