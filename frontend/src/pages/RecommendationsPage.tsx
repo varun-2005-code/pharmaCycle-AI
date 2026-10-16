@@ -256,19 +256,41 @@ export const RecommendationsPage: React.FC = () => {
                     {recommendation.waste_category}
                   </h3>
                 </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  {recommendation.verification_status === 'verified'
-                    ? 'Verified Health Authority Rule'
-                    : 'Unverified Policy'}
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+                  recommendation.verification_status === 'verified'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-amber-50 text-amber-900 border-amber-300'
+                }`}>
+                  {recommendation.verification_status === 'verified' ? (
+                    <>
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      Verified Health Authority Rule
+                    </>
+                  ) : (
+                    <>
+                      <AlertOctagon className="w-3.5 h-3.5 text-amber-600" />
+                      General Guidance (Unverified)
+                    </>
+                  )}
                 </div>
               </div>
+
+              {/* Unverified Transparency Warning */}
+              {recommendation.verification_status !== 'verified' && (
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="font-bold block">General Advice Disclaimer:</strong>
+                    <span>No verified local regulatory record exists for this item in this jurisdiction. Guidance is conservative and general. Never assume kerbside recyclability without checking municipal rules.</span>
+                  </div>
+                </div>
+              )}
 
               {/* Recommended Action */}
               <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-950 uppercase tracking-wider">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Mandated Disposal Action
+                  Recommended Disposal Action
                 </div>
                 <p className="text-sm font-semibold text-emerald-950 leading-relaxed">
                   {recommendation.recommended_action}
@@ -279,10 +301,10 @@ export const RecommendationsPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-tealAccent-600" /> Why This Action Is Suggested
+                    <Info className="w-3.5 h-3.5 text-tealAccent-600" /> Reason / Why This Action Is Suggested
                   </span>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    {recommendation.why_suggested}
+                    {recommendation.reason || recommendation.why_suggested}
                   </p>
                 </div>
 
@@ -301,24 +323,33 @@ export const RecommendationsPage: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <span className="font-semibold text-slate-700">Official Source Reference:</span>
                   <span className="text-[10px] text-slate-400">
-                    Jurisdiction: {recommendation.applicable_location}
+                    Jurisdiction: {recommendation.jurisdiction || recommendation.applicable_location}
                   </span>
                 </div>
                 <p className="text-slate-600 font-medium">
                   {recommendation.source_title}
                 </p>
-                {recommendation.source_url && (
+                {recommendation.source_url ? (
                   <a
                     href={recommendation.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[11px] text-tealAccent-700 hover:text-tealAccent-800 font-semibold"
                   >
-                    View Official Documentation <ExternalLink className="w-3 h-3" />
+                    View Verified Source Documentation <ExternalLink className="w-3 h-3" />
                   </a>
+                ) : (
+                  <span className="text-slate-400 italic block text-[11px]">
+                    No official external URL registered (general guidance only)
+                  </span>
+                )}
+                {recommendation.last_verified_at && (
+                  <div className="text-[10px] text-slate-400">
+                    Last Verified: {new Date(recommendation.last_verified_at).toLocaleDateString()}
+                  </div>
                 )}
                 <div className="pt-1 text-[11px] text-slate-500 italic">
-                  Note: {recommendation.confidence_explanation}
+                  <strong>Uncertainty / Confidence Explanation:</strong> {recommendation.confidence_explanation}
                 </div>
               </div>
 

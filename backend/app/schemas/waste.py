@@ -9,7 +9,7 @@ class WasteEventCreate(BaseModel):
     target_status: str = Field(..., description="Target status in state machine")
     quantity: Optional[float] = None
     quantity_unit: Optional[str] = None
-    actor: Optional[str] = Field("User", max_length=100)
+    actor: Optional[str] = Field(None, max_length=100)
     evidence_reference: Optional[str] = Field(None, max_length=255)
     demo_record: bool = False
 
@@ -34,6 +34,7 @@ class WasteItemCreate(BaseModel):
     visual_category: str = Field(..., max_length=100)
     confidence: Optional[float] = None
     model_mode: str = Field("demo", max_length=50)
+    demo_record: bool = False
     expiry_date: Optional[str] = Field(None, max_length=50)
     expiry_confirmation_status: str = Field("unverified", max_length=50)
     material_type: Optional[str] = Field(None, max_length=100)
@@ -49,6 +50,7 @@ class WasteItemResponse(BaseModel):
     visual_category: str
     confidence: Optional[float] = None
     model_mode: str
+    demo_record: bool = False
     expiry_date: Optional[str] = None
     expiry_confirmation_status: str
     material_type: Optional[str] = None

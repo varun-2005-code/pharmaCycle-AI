@@ -19,9 +19,10 @@ import {
   Video,
   VideoOff,
   Sliders,
-  Database
+  Database,
+  ShieldCheck
 } from 'lucide-react';
-import type { AnalyzeResponse } from '../types';
+import type { AnalyzeResponse, DisposalRecommendResponse } from '../types';
 
 export const IdentifyPage: React.FC = () => {
   // State
@@ -31,6 +32,10 @@ export const IdentifyPage: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
+
+  // Quick Recommendation Panel (Section 4D)
+  const [quickRec, setQuickRec] = useState<DisposalRecommendResponse | null>(null);
+  const [loadingQuickRec, setLoadingQuickRec] = useState<boolean>(false);
 
   // Demo Mode Controls (Section 4B)
   const [modelMode, setModelMode] = useState<'demo' | 'real'>('demo');
@@ -133,11 +138,40 @@ export const IdentifyPage: React.FC = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
     setResult(null);
+    setQuickRec(null);
     setErrorMessage(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
+  // Automatically fetch deterministic recommendation when visual category is determined
+  useEffect(() => {
+    if (result?.predicted_category) {
+      setLoadingQuickRec(true);
+      fetch('/api/disposal/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          waste_category: result.predicted_category,
+          expiry_status: 'unverified',
+          location: 'Central City'
+        })
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: DisposalRecommendResponse | null) => {
+          setQuickRec(data);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch recommendation preview', err);
+        })
+        .finally(() => {
+          setLoadingQuickRec(false);
+        });
+    } else {
+      setQuickRec(null);
+    }
+  }, [result]);
 
   // Camera Management
   const startCamera = async () => {
@@ -147,26 +181,43 @@ export const IdentifyPage: React.FC = () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access is not supported by your current browser.');
       }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+      } catch {
+        // Fallback to standard video stream for desktop/laptop webcams
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
       streamRef.current = stream;
       setIsCameraActive(true);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch((e) => console.error('Video play error:', e));
       }
     } catch (err: any) {
       console.error('Camera access error:', err);
       let msg = 'Could not access camera. Please verify camera permissions in your browser.';
-      if (err.name === 'NotAllowedError') {
-        msg = 'Camera permission was denied. Please allow camera access in browser settings.';
-      } else if (err.name === 'NotFoundError') {
-        msg = 'No video capture device was found on your system.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        msg = 'Camera permission was denied. Please allow camera access in your browser (click the camera or lock icon in your address bar).';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        msg = 'No video capture device (webcam or camera) was found on your system.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        msg = 'Camera is already in use by another application (e.g. Zoom, Teams, or another browser tab).';
       }
       setCameraError(msg);
       setIsCameraActive(false);
     }
   };
+
+  // Ensure video element receives active media stream upon mounting
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch((e) => console.error('Video play error:', e));
+    }
+  }, [isCameraActive]);
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -438,9 +489,16 @@ export const IdentifyPage: React.FC = () => {
             {isCameraActive ? (
               <div className="rounded-2xl border-2 border-tealAccent-500 overflow-hidden bg-black relative p-2">
                 <video
-                  ref={videoRef}
+                  ref={(el) => {
+                    videoRef.current = el;
+                    if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                      el.srcObject = streamRef.current;
+                      el.play().catch((e) => console.error('Video play error:', e));
+                    }
+                  }}
                   autoPlay
                   playsInline
+                  muted
                   className="w-full h-64 sm:h-80 object-cover rounded-xl"
                 />
                 <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-3 px-4">
@@ -546,7 +604,7 @@ export const IdentifyPage: React.FC = () => {
 
             {/* Camera Error Message */}
             {cameraError && (
-              <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2">
+              <div role="alert" aria-live="assertive" className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <span>{cameraError}</span>
               </div>
@@ -554,13 +612,18 @@ export const IdentifyPage: React.FC = () => {
 
             {/* Validation / API Error Message */}
             {errorMessage && (
-              <div className="mt-4 p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2">
+              <div role="alert" aria-live="assertive" className="mt-4 p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <strong className="font-bold block">Validation Alert:</strong>
                   <span>{errorMessage}</span>
                 </div>
-                <button onClick={() => setErrorMessage(null)} className="text-rose-500 hover:text-rose-700">
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage(null)}
+                  className="text-rose-500 hover:text-rose-700 cursor-pointer"
+                  aria-label="Dismiss alert"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -726,6 +789,65 @@ export const IdentifyPage: React.FC = () => {
                   </Link>
                 </div>
               )}
+
+              {/* Deterministic Disposal Recommendation Panel (Section 4D) */}
+              <div className="pt-2 border-t border-slate-100">
+                <span className="text-xs font-bold text-botanical-900 block mb-2">
+                  Disposal Recommendation:
+                </span>
+                {loadingQuickRec ? (
+                  <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-xs text-slate-500 text-center flex items-center justify-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-tealAccent-600" />
+                    Evaluating deterministic rules engine...
+                  </div>
+                ) : quickRec ? (
+                  <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-tealAccent-700" />
+                        Deterministic Rule Output
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                        quickRec.verification_status === 'verified'
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : 'bg-amber-100 text-amber-900 border-amber-300'
+                      }`}>
+                        {quickRec.verification_status === 'verified' ? 'Verified Local Rule' : 'General Guidance'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-bold text-emerald-950 block mb-0.5">Recommended Action:</span>
+                      <p className="text-xs text-emerald-900 leading-relaxed font-medium">
+                        {quickRec.recommended_action}
+                      </p>
+                    </div>
+
+                    {quickRec.handling_cautions && (
+                      <div className="text-[11px] text-rose-900 bg-rose-50/80 p-2.5 rounded-xl border border-rose-200">
+                        <strong>Caution:</strong> {quickRec.handling_cautions}
+                      </div>
+                    )}
+
+                    <div className="pt-1 flex flex-col sm:flex-row gap-2">
+                      <Link
+                        to={`/recommendations?category=${encodeURIComponent(result.predicted_category)}`}
+                        className="flex-1 py-1.5 px-3 rounded-lg bg-botanical-900 hover:bg-botanical-800 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                      >
+                        <span>Full Recommendation Studio</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                      <Link
+                        to={`/guide?category=${encodeURIComponent(result.predicted_category)}`}
+                        className="py-1.5 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <BookOpen className="w-3 h-3 text-slate-500" />
+                        <span>View Guide</span>
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
 
               {/* Suggested Next Actions */}
               <div className="pt-2 border-t border-slate-100 space-y-2">

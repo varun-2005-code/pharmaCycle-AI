@@ -103,16 +103,20 @@ def transition_waste_status(
     previous_status = item.current_status
     validate_transition(previous_status, target_status)
 
-    # Specific rule: 'processed' status must require an event record
+    # Specific rule: 'processed' status must require an event record with actor and evidence
     if target_status == WasteStatus.PROCESSED.value:
         if not create_event:
             raise ProcessedStatusRequiresEventError(
                 "Transition to 'processed' status strictly requires an associated event record."
             )
-        # Even when create_event is True, ensure evidence or actor is specified
-        if not actor:
+        # Even when create_event is True, ensure actor and evidence are specified
+        if not actor or not str(actor).strip():
             raise ProcessedStatusRequiresEventError(
                 "Processing event requires an identified actor (e.g., facility or operator)."
+            )
+        if not evidence_reference or not str(evidence_reference).strip():
+            raise ProcessedStatusRequiresEventError(
+                "Transition to 'processed' status strictly requires supporting evidence reference."
             )
 
     # Determine event quantity

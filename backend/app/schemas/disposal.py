@@ -26,8 +26,10 @@ class DisposalRecommendResponse(BaseModel):
     waste_category: str
     recommended_action: str
     why_suggested: str
+    reason: Optional[str] = None
     handling_cautions: str
     applicable_location: str
+    jurisdiction: Optional[str] = None
     source_title: Optional[str] = None
     source_url: Optional[str] = None
     verification_status: str = "verified"

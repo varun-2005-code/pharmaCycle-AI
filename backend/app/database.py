@@ -1,6 +1,6 @@
 """Database setup and session management for PharmaCycle AI Backend."""
 import logging
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -47,6 +47,18 @@ def init_db():
     logger.info("Initializing database schema...")
     Base.metadata.create_all(bind=engine)
     logger.info("Database schema initialized successfully.")
+
+    # Lightweight schema migration for SQLite
+    if "sqlite" in settings.DATABASE_URL:
+        try:
+            with engine.begin() as conn:
+                res = conn.execute(text("PRAGMA table_info(waste_items)"))
+                cols = [row[1] for row in res.fetchall()]
+                if cols and "demo_record" not in cols:
+                    conn.execute(text("ALTER TABLE waste_items ADD COLUMN demo_record BOOLEAN DEFAULT 0"))
+                    logger.info("Migrated waste_items table to include demo_record column.")
+        except Exception as e:
+            logger.debug(f"SQLite migration check skipped: {e}")
 
     # Seed baseline disposal rules and demo facilities
     from app.services.seed_data import seed_rules_and_facilities

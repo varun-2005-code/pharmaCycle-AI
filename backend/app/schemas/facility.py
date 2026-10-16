@@ -34,6 +34,7 @@ class FacilityResponse(BaseModel):
     source_url: Optional[str] = None
     verification_status: str
     last_verified_at: Optional[str] = None
+    is_example: bool = False
 
 
 class FacilityListResponse(BaseModel):

@@ -100,11 +100,6 @@ export const Footer: React.FC = () => {
                   Documentation & API Specs
                 </Link>
               </li>
-              <li>
-                <Link to="/admin" className="hover:text-tealAccent-400 transition-colors text-slate-400">
-                  Development Admin Console
-                </Link>
-              </li>
             </ul>
           </div>
 

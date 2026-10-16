@@ -51,6 +51,7 @@ def _format_item_response(item: WasteItem) -> WasteItemResponse:
         visual_category=item.visual_category,
         confidence=item.confidence,
         model_mode=item.model_mode,
+        demo_record=bool(item.demo_record),
         expiry_date=item.expiry_date,
         expiry_confirmation_status=item.expiry_confirmation_status,
         material_type=item.material_type,
@@ -69,17 +70,19 @@ def list_waste_items(
     status: Optional[str] = Query(None, description="Filter by status (e.g. identified, collected)"),
     category: Optional[str] = Query(None, description="Filter by visual category"),
     search: Optional[str] = Query(None, description="Search in notes or material"),
+    date_from: Optional[str] = Query(None, description="Filter items on or after YYYY-MM-DD"),
+    date_to: Optional[str] = Query(None, description="Filter items on or before YYYY-MM-DD"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db)
 ):
-    """List tracked waste items with optional filtering by status, category, or keyword."""
+    """List tracked waste items with optional filtering by status, category, date, or keyword."""
     query = db.query(WasteItem).options(joinedload(WasteItem.events))
 
-    if status:
+    if status and status.lower() != "all":
         query = query.filter(WasteItem.current_status == status.strip().lower())
 
-    if category:
+    if category and category.lower() != "all":
         query = query.filter(WasteItem.visual_category.ilike(f"%{category.strip()}%"))
 
     if search:
@@ -88,6 +91,12 @@ def list_waste_items(
             (WasteItem.user_notes.ilike(s)) |
             (WasteItem.material_type.ilike(s))
         )
+
+    if date_from:
+        query = query.filter(WasteItem.created_at >= f"{date_from.strip()} 00:00:00")
+
+    if date_to:
+        query = query.filter(WasteItem.created_at <= f"{date_to.strip()} 23:59:59")
 
     total = query.count()
     items = query.order_by(WasteItem.created_at.desc()).offset(offset).limit(limit).all()
@@ -104,10 +113,12 @@ def create_waste_item(payload: WasteItemCreate, db: Session = Depends(get_db)):
     Register a newly identified waste item into the Digital Twin tracking system.
     Automatically logs an initial 'identified' event.
     """
+    is_demo = payload.demo_record or (payload.model_mode == "demo")
     item = WasteItem(
         visual_category=payload.visual_category,
         confidence=payload.confidence,
         model_mode=payload.model_mode,
+        demo_record=is_demo,
         expiry_date=payload.expiry_date,
         expiry_confirmation_status=payload.expiry_confirmation_status,
         material_type=payload.material_type,
@@ -129,12 +140,12 @@ def create_waste_item(payload: WasteItemCreate, db: Session = Depends(get_db)):
         quantity_unit=item.quantity_unit,
         actor="Identification Service",
         evidence_reference="Initial detection log",
-        demo_record=(item.model_mode == "demo")
+        demo_record=is_demo
     )
     db.add(initial_event)
     db.commit()
     db.refresh(item)
-    logger.info(f"Created waste item #{item.id} category='{item.visual_category}'")
+    logger.info(f"Created waste item #{item.id} category='{item.visual_category}' demo={is_demo}")
     return _format_item_response(item)
 
 
@@ -170,16 +181,18 @@ def transition_item_status(
         )
 
     try:
+        is_demo = payload.demo_record or bool(item.demo_record) or (item.model_mode == "demo")
+        actor_name = payload.actor.strip() if (payload.actor and payload.actor.strip()) else ("User" if payload.target_status != "processed" else "")
         transition_waste_status(
             item=item,
             target_status=payload.target_status,
             db=db,
-            actor=payload.actor or "User",
+            actor=actor_name,
             event_type=payload.event_type,
             evidence_reference=payload.evidence_reference,
             quantity=payload.quantity,
             quantity_unit=payload.quantity_unit,
-            demo_record=payload.demo_record or (item.model_mode == "demo")
+            demo_record=is_demo
         )
         db.commit()
         db.refresh(item)
@@ -231,10 +244,12 @@ def delete_waste_item(item_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/demo/seed")
+@router.post("/demo/load")
+@router.post("/dashboard/demo/load")
 def seed_demo_data(db: Session = Depends(get_db)):
     """
     Seeds comprehensive sample waste items and event histories for judges to explore immediately.
-    All seeded demo records are marked demo_record=True or model_mode='demo'.
+    All seeded demo records are marked demo_record=True.
     """
     result = seed_demo_waste_items_and_events(db)
     return {
@@ -245,6 +260,7 @@ def seed_demo_data(db: Session = Depends(get_db)):
 
 
 @router.post("/demo/reset")
+@router.post("/dashboard/demo/reset")
 def reset_demo(db: Session = Depends(get_db)):
     """
     Cleans up all demo items and events from the database.

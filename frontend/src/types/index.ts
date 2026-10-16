@@ -65,6 +65,7 @@ export interface WasteItem {
   visual_category: string;
   confidence?: number;
   model_mode: 'demo' | 'real';
+  demo_record?: boolean;
   expiry_date?: string;
   expiry_confirmation_status: string;
   material_type?: string;
@@ -109,8 +110,10 @@ export interface DisposalRecommendResponse {
   waste_category: string;
   recommended_action: string;
   why_suggested: string;
+  reason?: string;
   handling_cautions: string;
   applicable_location: string;
+  jurisdiction?: string;
   source_title?: string;
   source_url?: string;
   verification_status: string;
@@ -152,6 +155,7 @@ export interface CollectionFacility {
   source_url?: string;
   verification_status: 'verified' | 'unverified';
   last_verified_at?: string;
+  is_example?: boolean;
 }
 
 export interface FacilityListResponse {
@@ -219,6 +223,7 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  mode?: string;
   sources?: ChatSource[];
   disclaimer?: string;
   timestamp: string;

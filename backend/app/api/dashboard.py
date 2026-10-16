@@ -31,7 +31,9 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     Reflects the 5-state lifecycle model.
     """
     total_items = db.query(WasteItem).count()
-    demo_items = db.query(WasteItem).filter(WasteItem.model_mode == "demo").count()
+    demo_items = db.query(WasteItem).filter(
+        (WasteItem.demo_record.is_(True)) | (WasteItem.model_mode == "demo")
+    ).count()
     actual_items = total_items - demo_items
 
     # Status counts

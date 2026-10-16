@@ -1,6 +1,6 @@
 """WasteItem SQLAlchemy Model."""
 from sqlalchemy import (
-    Column, Integer, String, Float, Text, DateTime, CheckConstraint, func
+    Column, Integer, String, Float, Boolean, Text, DateTime, CheckConstraint, func
 )
 from sqlalchemy.orm import relationship
 
@@ -14,6 +14,7 @@ class WasteItem(Base):
     visual_category = Column(String(100), nullable=False, index=True)
     confidence = Column(Float, nullable=True)
     model_mode = Column(String(50), nullable=False, default="demo")
+    demo_record = Column(Boolean, nullable=False, default=False, index=True)
     expiry_date = Column(String(50), nullable=True)
     expiry_confirmation_status = Column(String(50), nullable=False, default="unverified")
     material_type = Column(String(100), nullable=True)

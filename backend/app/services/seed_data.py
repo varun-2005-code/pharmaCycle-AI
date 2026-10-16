@@ -92,16 +92,16 @@ DEFAULT_DISPOSAL_RULES = [
             "Do not open, puncture, burn, crush, or mix unknown pharmaceutical containers. "
             "Handle with gloves if leaking or damaged, and store in a secure secondary container."
         ),
-        "source_title": "Department of Environment & Health Hazard Protocol",
-        "source_url": "https://www.who.int/water_sanitation_health/medical-waste/en/",
-        "verification_status": "verified",
-        "last_verified_at": datetime.now(timezone.utc)
+        "source_title": "General Guidance (Unverified) - Municipal Protocol Pending",
+        "source_url": None,
+        "verification_status": "general guidance, unverified",
+        "last_verified_at": None
     }
 ]
 
 DEFAULT_FACILITIES = [
     {
-        "name": "GreenCross Eco Pharmacy [Demo Facility]",
+        "name": "GreenCross Eco Pharmacy [EXAMPLE – not a real facility]",
         "address": "104 Botanical Way, Health District",
         "city": "Central City",
         "postal_code": "10001",
@@ -119,7 +119,7 @@ DEFAULT_FACILITIES = [
         "last_verified_at": datetime.now(timezone.utc)
     },
     {
-        "name": "TerraCycle Blister Pack Drop Box [Demo Facility]",
+        "name": "TerraCycle Blister Pack Drop Box [EXAMPLE – not a real facility]",
         "address": "45 Circular Economy Plaza",
         "city": "Central City",
         "postal_code": "10005",
@@ -135,7 +135,7 @@ DEFAULT_FACILITIES = [
         "last_verified_at": datetime.now(timezone.utc)
     },
     {
-        "name": "Metro Health Hospital Take-Back Kiosk [Demo Facility]",
+        "name": "Metro Health Hospital Take-Back Kiosk [EXAMPLE – not a real facility]",
         "address": "500 Medical Center Blvd",
         "city": "Metro City",
         "postal_code": "20002",
@@ -152,7 +152,7 @@ DEFAULT_FACILITIES = [
         "last_verified_at": datetime.now(timezone.utc)
     },
     {
-        "name": "Harbor Industrial Materials Reclamation [Demo Facility]",
+        "name": "Harbor Industrial Materials Reclamation [EXAMPLE – not a real facility]",
         "address": "Pier 18, Harbor Industrial Park",
         "city": "Harbor City",
         "postal_code": "30003",
@@ -169,7 +169,7 @@ DEFAULT_FACILITIES = [
         "last_verified_at": datetime.now(timezone.utc)
     },
     {
-        "name": "Suburban Drugstore Unverified Bin [Demo Facility]",
+        "name": "Suburban Drugstore Unverified Bin [EXAMPLE – not a real facility]",
         "address": "12 Maple Street",
         "city": "Riverdale",
         "postal_code": "40004",
@@ -183,27 +183,63 @@ DEFAULT_FACILITIES = [
         "source_url": "https://pharmacycle.local/demo-facilities",
         "verification_status": "unverified",  # Explicitly unverified per section 4F
         "last_verified_at": None
+    },
+    {
+        "name": "Riverdale Quick-Care Unverified Blister Box [EXAMPLE – not a real facility]",
+        "address": "77 Elm Street",
+        "city": "Riverdale",
+        "postal_code": "40004",
+        "latitude": 41.8790,
+        "longitude": -87.6300,
+        "contact_details": "+1 (555) 019-4411",
+        "operating_hours": "Drop Box Only",
+        "accepted_categories": json.dumps([
+            "Empty blister pack"
+        ]),
+        "source_url": None,
+        "verification_status": "unverified",  # Section 4D: Unverified blister box must NOT be recommended
+        "last_verified_at": None
     }
 ]
 
 
 def seed_rules_and_facilities(db: Session) -> None:
     """Populates baseline disposal rules and demo facilities if not already present."""
-    if db.query(DisposalRule).count() == 0:
-        logger.info("Seeding initial disposal rules...")
-        for r_data in DEFAULT_DISPOSAL_RULES:
-            rule = DisposalRule(**r_data)
-            db.add(rule)
-        db.commit()
-        logger.info(f"Seeded {len(DEFAULT_DISPOSAL_RULES)} disposal rules.")
+    for r_data in DEFAULT_DISPOSAL_RULES:
+        existing = db.query(DisposalRule).filter(
+            DisposalRule.waste_category == r_data["waste_category"]
+        ).first()
+        if not existing:
+            db.add(DisposalRule(**r_data))
+        else:
+            # Update fields to ensure accurate verification status and no fabricated URLs
+            for k, v in r_data.items():
+                setattr(existing, k, v)
+    db.commit()
 
-    if db.query(CollectionFacility).count() == 0:
-        logger.info("Seeding demo collection facilities...")
-        for f_data in DEFAULT_FACILITIES:
-            fac = CollectionFacility(**f_data)
-            db.add(fac)
-        db.commit()
-        logger.info(f"Seeded {len(DEFAULT_FACILITIES)} collection facilities.")
+    for f_data in DEFAULT_FACILITIES:
+        # Match by name or address so legacy rows get updated to [EXAMPLE – not a real facility]
+        existing_f = db.query(CollectionFacility).filter(
+            (CollectionFacility.name == f_data["name"]) |
+            (CollectionFacility.address == f_data["address"])
+        ).first()
+        if not existing_f:
+            db.add(CollectionFacility(**f_data))
+        else:
+            for k, v in f_data.items():
+                setattr(existing_f, k, v)
+    db.commit()
+
+    # Ensure any remaining legacy facility names are updated to [EXAMPLE – not a real facility]
+    legacy_facs = db.query(CollectionFacility).all()
+    for fac in legacy_facs:
+        if "[Demo Facility]" in fac.name:
+            fac.name = fac.name.replace("[Demo Facility]", "[EXAMPLE – not a real facility]")
+        elif "EXAMPLE" not in fac.name:
+            fac.name = f"{fac.name} [EXAMPLE – not a real facility]"
+    db.commit()
+
+    logger.info("Baseline rules and collection facilities synchronized.")
 
 
 def seed_demo_waste_items_and_events(db: Session) -> dict:
@@ -218,6 +254,7 @@ def seed_demo_waste_items_and_events(db: Session) -> dict:
             "visual_category": "Medicine or tablet strip",
             "confidence": None,
             "model_mode": "demo",
+            "demo_record": True,
             "expiry_date": "11/2024",
             "expiry_confirmation_status": "confirmed_expired",
             "material_type": "PVC/Aluminium Blister with Tablets",
@@ -237,6 +274,7 @@ def seed_demo_waste_items_and_events(db: Session) -> dict:
             "visual_category": "Empty blister pack",
             "confidence": None,
             "model_mode": "demo",
+            "demo_record": True,
             "expiry_date": None,
             "expiry_confirmation_status": "unverified",
             "material_type": "Multilayer PVC/Aluminium Composite",
@@ -255,6 +293,7 @@ def seed_demo_waste_items_and_events(db: Session) -> dict:
             "visual_category": "Medicine bottle or container",
             "confidence": None,
             "model_mode": "demo",
+            "demo_record": True,
             "expiry_date": "08/2025",
             "expiry_confirmation_status": "confirmed_valid",
             "material_type": "Amber Glass (Rinsed)",
@@ -272,6 +311,7 @@ def seed_demo_waste_items_and_events(db: Session) -> dict:
             "visual_category": "Cardboard or paper pharmaceutical packaging",
             "confidence": None,
             "model_mode": "demo",
+            "demo_record": True,
             "expiry_date": None,
             "expiry_confirmation_status": "unverified",
             "material_type": "Recyclable Paperboard",
@@ -288,6 +328,7 @@ def seed_demo_waste_items_and_events(db: Session) -> dict:
             "visual_category": "Medicine or tablet strip",
             "confidence": None,
             "model_mode": "demo",
+            "demo_record": True,
             "expiry_date": "02/2024",
             "expiry_confirmation_status": "confirmed_expired",
             "material_type": "Alu-Alu Cold Form Strip",
@@ -303,6 +344,7 @@ def seed_demo_waste_items_and_events(db: Session) -> dict:
             "visual_category": "Unknown or other",
             "confidence": None,
             "model_mode": "demo",
+            "demo_record": True,
             "expiry_date": None,
             "expiry_confirmation_status": "unverified",
             "material_type": "Unmarked Plastic Polymer",
@@ -348,10 +390,12 @@ def seed_demo_waste_items_and_events(db: Session) -> dict:
 
 def reset_demo_data(db: Session) -> dict:
     """Removes demo waste items and events while preserving baseline rules and facilities."""
-    # Delete events associated with demo items
+    # Delete events associated with demo records
     demo_events_deleted = db.query(WasteEvent).filter(WasteEvent.demo_record.is_(True)).delete(synchronize_session=False)
-    # Delete waste items marked model_mode="demo"
-    demo_items_deleted = db.query(WasteItem).filter(WasteItem.model_mode == "demo").delete(synchronize_session=False)
+    # Delete waste items marked demo_record=True or model_mode="demo"
+    demo_items_deleted = db.query(WasteItem).filter(
+        (WasteItem.demo_record.is_(True)) | (WasteItem.model_mode == "demo")
+    ).delete(synchronize_session=False)
     db.commit()
     logger.info(f"Demo data reset: deleted {demo_items_deleted} items and {demo_events_deleted} events.")
     return {"demo_items_deleted": demo_items_deleted, "demo_events_deleted": demo_events_deleted}

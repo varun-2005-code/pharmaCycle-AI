@@ -36,14 +36,16 @@ def _parse_facility_model(fac: CollectionFacility) -> FacilityResponse:
         accepted_categories=categories,
         source_url=fac.source_url,
         verification_status=fac.verification_status,
-        last_verified_at=fac.last_verified_at.isoformat() if fac.last_verified_at else None
+        last_verified_at=fac.last_verified_at.isoformat() if fac.last_verified_at else None,
+        is_example="example" in fac.name.lower() or "demo" in fac.name.lower()
     )
 
 
 @router.get("/facilities", response_model=FacilityListResponse)
 def list_facilities(
-    search: Optional[str] = Query(None, description="Search in name, address, or city"),
+    search: Optional[str] = Query(None, description="Search in name, address, city, or PIN"),
     city: Optional[str] = Query(None, description="Filter by city name"),
+    pin: Optional[str] = Query(None, description="Filter by PIN / postal code"),
     postal_code: Optional[str] = Query(None, description="Filter by postal/PIN code"),
     category: Optional[str] = Query(None, description="Filter by accepted waste category"),
     verified_only: bool = Query(False, description="Filter only verified facilities"),
@@ -61,8 +63,9 @@ def list_facilities(
     if city:
         query = query.filter(CollectionFacility.city.ilike(f"%{city.strip()}%"))
 
-    if postal_code:
-        query = query.filter(CollectionFacility.postal_code.ilike(f"%{postal_code.strip()}%"))
+    target_pin = pin or postal_code
+    if target_pin:
+        query = query.filter(CollectionFacility.postal_code.ilike(f"%{target_pin.strip()}%"))
 
     if search:
         s = f"%{search.strip()}%"

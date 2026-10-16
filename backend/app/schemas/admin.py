@@ -46,3 +46,8 @@ class AdminStatsResponse(BaseModel):
     total_rules: int
     total_items: int
     total_events: int
+
+
+class VerificationStatusUpdate(BaseModel):
+    verification_status: str = Field(..., pattern="^(verified|unverified)$")
+

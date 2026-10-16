@@ -11,37 +11,39 @@ import {
   User,
   MessageSquare,
   HelpCircle,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import type { ChatMessage, ChatResponse } from '../types';
 
-const INITIAL_SUGGESTIONS = [
+const SPEC_EXAMPLE_QUESTIONS = [
   'How should I dispose of expired tablets?',
   'Can I put an empty blister pack in a plastic recycling bin?',
   'How do I read the expiry date on this medicine?',
-  'What should I do if the expiry date is unreadable?',
-  'Can I flush liquid antibiotics down the toilet?'
+  'What should I do if the expiry date is unreadable?'
 ];
 
 export const AssistantPage: React.FC = () => {
+  const [activeMode, setActiveMode] = useState<'rules_grounded' | 'llm_grounded'>('rules_grounded');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
       content:
-        'Hello! I am your **PharmaCycle AI Disposal Assistant**. I provide evidence-grounded instructions for safely disposing of medicines and recycling pharmaceutical packaging based on approved health and environmental standards.\n\nHow can I help you today?',
+        'Hello! I am your **PharmaCycle AI Disposal Assistant**.\n\nI provide evidence-grounded instructions for safely disposing of medicines and recycling pharmaceutical packaging based exclusively on approved health and environmental standards.\n\nI answer solely from verified disposal regulations and guide content. I do not provide medical diagnoses, evaluate drug consumption safety, or invent facility addresses.',
+      mode: 'rules_grounded',
       sources: [
         { title: 'WHO Safe Medical Waste Guidance', url: 'https://www.who.int' },
         { title: 'FDA Safe Medicine Disposal', url: 'https://www.fda.gov/drugs/safe-disposal-medicines' }
       ],
-      disclaimer: 'Grounded in health authority guidance. Decoupled from unconstrained LLM hallucinations.',
+      disclaimer: 'Grounded exclusively in published health authority guidance. Decoupled from unconstrained LLM hallucinations.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
 
   const [inputMessage, setInputMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [activeSuggestions, setActiveSuggestions] = useState<string[]>(INITIAL_SUGGESTIONS);
+  const [activeSuggestions, setActiveSuggestions] = useState<string[]>(SPEC_EXAMPLE_QUESTIONS);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -80,11 +82,14 @@ export const AssistantPage: React.FC = () => {
       }
 
       const data: ChatResponse = await res.json();
+      const currentMode = (data.mode === 'llm_grounded' ? 'llm_grounded' : 'rules_grounded') as 'rules_grounded' | 'llm_grounded';
+      setActiveMode(currentMode);
 
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
         content: data.reply,
+        mode: currentMode,
         sources: data.sources,
         disclaimer: data.disclaimer,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -100,6 +105,7 @@ export const AssistantPage: React.FC = () => {
         role: 'assistant',
         content:
           '⚠️ Sorry, I encountered a temporary connection issue while querying the disposal guidance base. Please try again or consult the [Disposal Guide](/guide).',
+        mode: 'rules_grounded',
         disclaimer: 'Connection error fallback',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
@@ -128,25 +134,33 @@ export const AssistantPage: React.FC = () => {
           AI Pharmaceutical Disposal Assistant
         </h1>
         <p className="text-sm text-slate-600 mt-2">
-          Interactive chat assistant answering packaging disposal queries, grounded in approved health authority guidelines with verified source citations.
+          Evidence-grounded assistant answering medicine and packaging disposal questions. Grounded exclusively in approved health guidelines with verified source citations.
         </p>
       </div>
 
       {/* Main Chat Window */}
-      <div className="bg-white rounded-3xl border border-emerald-100 shadow-soft overflow-hidden flex flex-col h-[640px]">
-        {/* Chat Status Bar */}
-        <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-slate-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-semibold text-botanical-900">Grounded Guidance Engine</span>
-            <span className="text-[10px] text-slate-400">| Rules & Retrieval Mode</span>
+      <div className="bg-white rounded-3xl border border-emerald-100 shadow-soft overflow-hidden flex flex-col h-[680px]">
+        {/* Chat Status Bar with Active Mode Indicator */}
+        <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            {activeMode === 'llm_grounded' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[11px] shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                Active Mode: LLM-Grounded (Gemini API • Strictly Grounded in Retrieved Passages)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px] shadow-2xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                Active Mode: Rules-Backed FAQ (Deterministic Grounding • No Hallucinations)
+              </span>
+            )}
           </div>
           <button
             onClick={() => {
               setMessages([messages[0]]);
-              setActiveSuggestions(INITIAL_SUGGESTIONS);
+              setActiveSuggestions(SPEC_EXAMPLE_QUESTIONS);
             }}
-            className="text-[11px] text-slate-500 hover:text-botanical-900 flex items-center gap-1"
+            className="text-[11px] text-slate-500 hover:text-botanical-900 flex items-center gap-1 cursor-pointer font-medium"
           >
             <RefreshCw className="w-3 h-3" /> Clear History
           </button>
@@ -154,76 +168,110 @@ export const AssistantPage: React.FC = () => {
 
         {/* Message Thread */}
         <div className="flex-1 p-6 overflow-y-auto space-y-5">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex gap-3 items-start ${
-                msg.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-botanical-900 text-white flex items-center justify-center shrink-0 shadow-2xs mt-1">
-                  <Bot className="w-4 h-4 text-tealAccent-400" />
-                </div>
-              )}
+          {messages.map((msg) => {
+            const isRefusal = msg.content.includes('Guardrail') || msg.content.includes('Information unavailable');
+            const isUnavailable = msg.content.includes('Information unavailable');
 
+            return (
               <div
-                className={`max-w-[85%] sm:max-w-[75%] rounded-3xl p-4 sm:p-5 text-xs sm:text-sm leading-relaxed shadow-2xs ${
-                  msg.role === 'user'
-                    ? 'bg-botanical-900 text-white rounded-tr-none'
-                    : 'bg-slate-50 border border-slate-200/80 text-slate-800 rounded-tl-none'
+                key={msg.id}
+                className={`flex gap-3 items-start ${
+                  msg.role === 'user' ? 'justify-end' : 'justify-start'
                 }`}
               >
-                {/* Message Body */}
-                <div className="whitespace-pre-line font-normal">{msg.content}</div>
-
-                {/* Sources & Citations (Section 4E spec requirement) */}
-                {msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-200/60 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Verified Citations & Guidelines:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {msg.sources.map((src, idx) => (
-                        <a
-                          key={idx}
-                          href={src.url || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-tealAccent-700 hover:text-tealAccent-800 font-semibold"
-                        >
-                          <CheckCircle2 className="w-3 h-3 text-tealAccent-600" />
-                          {src.title}
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Disclaimer Pill */}
-                {msg.disclaimer && (
-                  <div className="mt-2 text-[10px] text-slate-400 italic">
-                    ℹ️ {msg.disclaimer}
+                {msg.role === 'assistant' && (
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs mt-1 ${
+                    isRefusal ? 'bg-amber-600 text-white' : 'bg-botanical-900 text-white'
+                  }`}>
+                    {isRefusal ? (
+                      <AlertOctagon className="w-4 h-4 text-white" />
+                    ) : (
+                      <Bot className="w-4 h-4 text-tealAccent-400" />
+                    )}
                   </div>
                 )}
 
                 <div
-                  className={`text-[9px] mt-2 text-right ${
-                    msg.role === 'user' ? 'text-tealAccent-200' : 'text-slate-400'
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-3xl p-4 sm:p-5 text-xs sm:text-sm leading-relaxed shadow-2xs ${
+                    msg.role === 'user'
+                      ? 'bg-botanical-900 text-white rounded-tr-none'
+                      : isUnavailable
+                      ? 'bg-amber-50/70 border border-amber-200 text-amber-950 rounded-tl-none'
+                      : 'bg-slate-50 border border-slate-200/80 text-slate-800 rounded-tl-none'
                   }`}
                 >
-                  {msg.timestamp}
-                </div>
-              </div>
+                  {/* Mode Badge for Assistant Message */}
+                  {msg.role === 'assistant' && (
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold tracking-tight inline-flex items-center gap-1 ${
+                        msg.mode === 'llm_grounded'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                      }`}>
+                        {msg.mode === 'llm_grounded' ? (
+                          <>
+                            <Sparkles className="w-2.5 h-2.5 text-amber-700" /> LLM-Grounded
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" /> Rules-Grounded FAQ
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
 
-              {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-xl bg-tealAccent-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-1">
-                  <User className="w-4 h-4" />
+                  {/* Message Body */}
+                  <div className="whitespace-pre-line font-normal">{msg.content}</div>
+
+                  {/* Sources & Citations (Section 4E spec requirement) */}
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-200/60 space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Verified Citations & Guidelines:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {msg.sources.map((src, idx) => (
+                          <a
+                            key={idx}
+                            href={src.url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-tealAccent-700 hover:text-tealAccent-800 font-semibold shadow-2xs"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-tealAccent-600" />
+                            {src.title}
+                            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Disclaimer Pill */}
+                  {msg.disclaimer && (
+                    <div className="mt-2.5 text-[10px] text-slate-400 italic">
+                      ℹ️ {msg.disclaimer}
+                    </div>
+                  )}
+
+                  <div
+                    className={`text-[9px] mt-2 text-right ${
+                      msg.role === 'user' ? 'text-tealAccent-200' : 'text-slate-400'
+                    }`}
+                  >
+                    {msg.timestamp}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-xl bg-tealAccent-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-1">
+                    <User className="w-4 h-4" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {loading && (
             <div className="flex gap-3 items-center text-xs text-slate-500">
@@ -234,7 +282,9 @@ export const AssistantPage: React.FC = () => {
                 <span className="w-1.5 h-1.5 rounded-full bg-tealAccent-600 animate-bounce" />
                 <span className="w-1.5 h-1.5 rounded-full bg-tealAccent-600 animate-bounce delay-100" />
                 <span className="w-1.5 h-1.5 rounded-full bg-tealAccent-600 animate-bounce delay-200" />
-                <span className="text-[11px] text-slate-500">Consulting verified disposal guidance...</span>
+                <span className="text-[11px] text-slate-500">
+                  Retrieving verified disposal rules and packaging guidance...
+                </span>
               </div>
             </div>
           )}
@@ -242,16 +292,16 @@ export const AssistantPage: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggestion Chips */}
+        {/* Suggestion Chips - Guaranteed coverage of Section 4E questions */}
         {activeSuggestions.length > 0 && (
-          <div className="px-6 py-2 bg-slate-50/70 border-t border-slate-100 flex items-center gap-2 overflow-x-auto text-[11px]">
-            <span className="text-slate-400 font-semibold shrink-0">Suggested:</span>
+          <div className="px-6 py-2.5 bg-slate-50/80 border-t border-slate-100 flex items-center gap-2 overflow-x-auto text-[11px]">
+            <span className="text-slate-400 font-semibold shrink-0">Spec Examples:</span>
             {activeSuggestions.map((sug, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleSendMessage(sug)}
-                className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-tealAccent-500 hover:text-botanical-900 whitespace-nowrap transition-colors"
+                className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-tealAccent-500 hover:text-botanical-900 whitespace-nowrap transition-colors shadow-2xs font-medium cursor-pointer"
               >
                 {sug}
               </button>
@@ -273,23 +323,23 @@ export const AssistantPage: React.FC = () => {
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder="Ask a question about blister packs, expired medicines, bottles, or recycling..."
+              placeholder="Ask about blister packs, expired tablets, bottles, or unreadable expiry dates..."
               className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-hidden focus:border-tealAccent-600 resize-none max-h-24"
             />
             <button
               type="submit"
               disabled={loading || !inputMessage.trim()}
-              className="px-5 rounded-xl bg-botanical-900 text-white font-bold hover:bg-botanical-800 transition-colors flex items-center justify-center shadow-2xs disabled:opacity-40"
+              className="px-5 rounded-xl bg-botanical-900 text-white font-bold hover:bg-botanical-800 transition-colors flex items-center justify-center shadow-2xs disabled:opacity-40 cursor-pointer"
             >
               <Send className="w-4 h-4 text-tealAccent-400" />
             </button>
           </form>
 
-          {/* Clinical Safety Constraint Notice */}
+          {/* Clinical Safety & Hallucination Guardrail Notice */}
           <div className="mt-2 text-center text-[10px] text-slate-400 flex items-center justify-center gap-1.5">
             <AlertOctagon className="w-3 h-3 text-amber-500" />
             <span>
-              <strong>Clinical Guardrail:</strong> PharmaCycle AI assists exclusively with waste disposal. We do not provide clinical drug advice or diagnosis.
+              <strong>Clinical Guardrails Active:</strong> PharmaCycle AI answers only waste disposal queries. It strictly refuses medical diagnoses, appearance-based safety assertions, and facility hallucinations.
             </span>
           </div>
         </div>

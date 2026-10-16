@@ -84,21 +84,39 @@ DISPOSAL_GUIDE_ARTICLES: List[DisposalGuideArticle] = [
         verification_status="verified"
     ),
     DisposalGuideArticle(
-        id="art-cardboard-paper",
+        id="art-cardboard-cartons",
         category="Cardboard or paper pharmaceutical packaging",
-        title="Cardboard Medicine Cartons & Paper Leaflets",
-        common_materials="Bleached chemical pulp, paperboard folding boxboard, cellulose paper patient information leaflets (PILs).",
+        title="Cardboard Medicine Cartons",
+        common_materials="Bleached chemical pulp, folding boxboard, recyclable virgin and post-consumer cellulose fibers.",
         appropriate_route=(
-            "Flatten outer boxes to conserve bin volume and recycle through standard dry paper and cardboard household kerbside collection."
+            "Flatten outer cardboard boxes to conserve bin volume and recycle through standard dry paper and cardboard household kerbside collection."
         ),
         what_not_to_do=(
-            "Do NOT place cartons in recycling if they have been contaminated with spilled liquid medications, "
+            "Do NOT place cartons in recycling if they have been stained or contaminated with spilled liquid medications, "
             "broken glass ampoules, or bodily fluids."
         ),
         depends_on_local_rules=(
-            "Paper collection may require separation into bags or dedicated blue bins depending on municipal single-stream vs multi-stream sorting."
+            "Paper collection may require separation into designated paper recycling bins or paper sacks depending on municipal single-stream vs dual-stream sorting."
         ),
         source_title="European Paper Recycling Council & Circular Packaging Standards",
+        source_url="https://www.cepi.org",
+        verification_status="verified"
+    ),
+    DisposalGuideArticle(
+        id="art-paper-leaflets",
+        category="Cardboard or paper pharmaceutical packaging",
+        title="Paper Leaflets (Patient Information Leaflets)",
+        common_materials="Lightweight uncoated paper, wood-free cellulose, non-toxic offset printing inks.",
+        appropriate_route=(
+            "Clean paper leaflets (PILs) can be placed directly into dry household paper recycling alongside cardboard packaging."
+        ),
+        what_not_to_do=(
+            "Do NOT recycle leaflets if they have absorbed liquid antibiotic syrup, chemicals, or oily suspensions."
+        ),
+        depends_on_local_rules=(
+            "Check whether local collection permits shredded or loose small paper leaflets in commingled bins."
+        ),
+        source_title="Confederation of European Paper Industries / Recyclability Guidelines",
         source_url="https://www.cepi.org",
         verification_status="verified"
     ),
@@ -108,8 +126,8 @@ DISPOSAL_GUIDE_ARTICLES: List[DisposalGuideArticle] = [
         title="Unknown or Contaminated Pharmaceutical Packaging",
         common_materials="Unmarked multilayer plastics, damaged aerosols, cytotoxic vials, unmarked mystery compounds.",
         appropriate_route=(
-            "Contact your municipal environmental health department, community hazardous waste drop-off event, "
-            "or local hospital pharmacy disposal officer for safe handling protocols."
+            "Avoid speculative domestic disposal. Contact your municipal environmental health department, "
+            "community hazardous waste drop-off event, or local hospital pharmacy disposal officer for safe handling protocols."
         ),
         what_not_to_do=(
             "Do NOT crush, burn, puncture, or open unknown containers. Never mix unknown chemical compounds into household refuse or sewers."
@@ -117,9 +135,9 @@ DISPOSAL_GUIDE_ARTICLES: List[DisposalGuideArticle] = [
         depends_on_local_rules=(
             "Availability of specialized household hazardous waste collection days and drop-off depots."
         ),
-        source_title="WHO Safe Management of Wastes from Health-Care Activities",
-        source_url="https://www.who.int/publications/i/item/9789241548564",
-        verification_status="verified"
+        source_title="General Guidance (Unverified) - Municipal Protocol Pending",
+        source_url=None,
+        verification_status="general guidance, unverified"
     )
 ]
 
@@ -153,7 +171,11 @@ def get_disposal_guide(
     articles = DISPOSAL_GUIDE_ARTICLES
 
     if category:
-        articles = [a for a in articles if a.category.lower() == category.strip().lower()]
+        cat_clean = category.strip().lower()
+        articles = [
+            a for a in articles
+            if a.category.lower() == cat_clean or cat_clean in a.category.lower() or cat_clean in a.id.lower() or cat_clean in a.title.lower()
+        ]
 
     if search:
         q = search.strip().lower()

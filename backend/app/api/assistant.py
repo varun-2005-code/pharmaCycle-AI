@@ -16,7 +16,12 @@ def chat_with_assistant(payload: ChatRequest):
     Provides verifiable citations and strictly avoids medical advice or drug consumption recommendations.
     """
     try:
-        response = process_chat_message(payload.message)
+        context_dict = payload.context.model_dump() if payload.context else None
+        response = process_chat_message(
+            message=payload.message,
+            history=payload.history,
+            context=context_dict
+        )
         return response
     except Exception as e:
         logger.error(f"Error handling assistant chat: {e}", exc_info=True)

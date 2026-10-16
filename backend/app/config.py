@@ -1,5 +1,5 @@
 """Configuration settings for PharmaCycle AI Backend."""
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,6 +29,10 @@ class Settings(BaseSettings):
 
     # Development Admin Authentication (Section 4J)
     ADMIN_SECRET_KEY: str = "pharmacycle-dev-admin-key-2026"
+
+    # LLM Assistant Grounding (Section 4E) - Optional external API keys
+    GEMINI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
